@@ -20,12 +20,12 @@ const SPOT_TYPES = [
 const OCCUPANCY_ICONS = {
   company: {
     svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clip-rule="evenodd" /></svg>',
-    color: '#ffffff', // White icon on colored dot
+    color: '#ffffff',
     title: 'Company-Occupied'
   },
   person: {
     svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>',
-    color: '#ffffff', // White icon on colored dot
+    color: '#ffffff',
     title: 'Person-Occupied'
   }
 };
@@ -297,13 +297,12 @@ export default function PublicFloorPage() {
           type: shape.type,
           elementType: shape.element.tagName.toLowerCase(),
           
-          // Using the new field structure that matches admin page
-          companyName: 'Unassigned', // Will be overridden by database
-          parkerName: null, // Will be overridden by database
-          spotNumber: cleanText || `SPOT-${shapeIndex + 1}`, // Use detected text or generate
+          companyName: 'Unassigned',
+          parkerName: null,
+          spotNumber: cleanText || `SPOT-${shapeIndex + 1}`,
           originalSpotNumber: cleanText,
-          spotType: 'regular', // Default spot type
-          spotTypeConfig: SPOT_TYPES[0], // Default to regular
+          spotType: 'regular',
+          spotTypeConfig: SPOT_TYPES[0],
           
           hasText: !!cleanText,
           shapeIndex: shapeIndex,
@@ -402,26 +401,21 @@ export default function PublicFloorPage() {
             const spotType = matchingDbSpot.spot_type || 'regular';
             const spotTypeConfig = SPOT_TYPES.find(t => t.id === spotType) || SPOT_TYPES[0];
             
-            // Map database fields to the new structure (same as admin page)
             return {
               ...detectedSpot,
               id: matchingDbSpot.id,
               dbId: matchingDbSpot.id,
-              
-              // NEW: Read the same data structure as admin page
-              companyName: matchingDbSpot.display_label || 'Unassigned', // Company Name
-              parkerName: matchingDbSpot.custom_label, // Parker Name
-              spotNumber: matchingDbSpot.original_label || detectedSpot.spotNumber, // Spot Number
-              spotType: spotType, // Add spot type
-              spotTypeConfig: spotTypeConfig, // Add spot type config for colors
-              
+              companyName: matchingDbSpot.display_label || 'Unassigned',
+              parkerName: matchingDbSpot.custom_label,
+              spotNumber: matchingDbSpot.original_label || detectedSpot.spotNumber,
+              spotType: spotType,
+              spotTypeConfig: spotTypeConfig,
               originalSpotNumber: matchingDbSpot.original_label || detectedSpot.originalSpotNumber,
               isCustomLabeled: matchingDbSpot.is_custom_labeled,
               isFromDatabase: true
             };
           }
           
-          // No match in database, use detected data
           return detectedSpot;
         });
         
@@ -469,16 +463,15 @@ export default function PublicFloorPage() {
     };
 
     window.addEventListener('resize', handleResize);
-    updateContainerRect(); // Initial call
+    updateContainerRect();
     
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // FIXED: Calculate spot position correctly
+  // Calculate spot position correctly
   const calculateSpotPosition = (spot) => {
     if (!spot || !svgDimensions.width || !svgDimensions.height) return null;
     
-    // Convert SVG coordinates to percentages based on actual SVG dimensions
     const left = (spot.svgX / svgDimensions.width) * 100;
     const top = (spot.svgY / svgDimensions.height) * 100;
     const width = (spot.svgWidth / svgDimensions.width) * 100;
@@ -487,8 +480,8 @@ export default function PublicFloorPage() {
     return {
       left: `${left}%`,
       top: `${top}%`,
-      width: `${Math.max(width, 1)}%`, // Ensure minimum width
-      height: `${Math.max(height, 1)}%` // Ensure minimum height
+      width: `${Math.max(width, 1)}%`,
+      height: `${Math.max(height, 1)}%`
     };
   };
 
@@ -500,119 +493,144 @@ export default function PublicFloorPage() {
   // ==================== RENDER FUNCTIONS ====================
 
   const renderInteractiveOverlay = () => {
-    if (!svgContent || spots.length === 0) return null;
+  if (!svgContent || spots.length === 0) return null;
 
-    return (
-      <div className="absolute inset-0 pointer-events-none">
-        {spots.map((spot) => {
-          const pos = calculateSpotPosition(spot);
-          if (!pos) return null;
+  return (
+    <div className="absolute inset-0 pointer-events-none">
+      {spots.map((spot) => {
+        const pos = calculateSpotPosition(spot);
+        if (!pos) return null;
 
-          // Get occupancy status
-          const occupancy = getOccupancyStatus(spot);
-          
-          // Determine dot color based on spot type ONLY
-          let dotColor = '#9ca3af'; // Default gray for unassigned with no type
-          
-          if (spot.spotTypeConfig) {
-            // Use spot type color for all spots
-            dotColor = spot.spotTypeConfig.color;
-          }
-          
-          // Determine availability status for tooltip
-          const isUnassigned = occupancy.type === null;
-          
-          // Tooltip text
-          const titleText = `${spot.spotNumber} • ${occupancy.description}${spot.spotTypeConfig ? ` • ${spot.spotTypeConfig.name}` : ''}`;
+        const occupancy = getOccupancyStatus(spot);
+        const isUnassigned = occupancy.type === null;
+        
+        let dotColor = '#9ca3af';
+        if (spot.spotTypeConfig) {
+          dotColor = spot.spotTypeConfig.color;
+        }
 
-          return (
-            <div 
-              key={spot.id} 
-              className="absolute group" 
+        return (
+          <div 
+            key={spot.id} 
+            className="absolute group" 
+            style={{
+              left: pos.left,
+              top: pos.top,
+              width: pos.width,
+              height: pos.height,
+            }}
+          >
+            {/* COLORED DOT INDICATOR */}
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div 
+                className="relative w-4 h-4 rounded-full border-2 border-white shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-125 transition-all duration-200 pointer-events-none flex items-center justify-center"
+                style={{ 
+                  backgroundColor: dotColor,
+                  borderColor: 'white'
+                }}
+              >
+                {/* OCCUPANCY ICON OVERLAY */}
+                {occupancy.icon && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ 
+                      width: '100%', 
+                      height: '100%',
+                      color: occupancy.icon.color,
+                      padding: '3px'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: occupancy.icon.svg }}
+                  />
+                )}
+              </div>
+            </div>
+            
+            {/* HOVER AREA - Invisible but clickable */}
+            <button
+              className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 border-transparent rounded pointer-events-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
               style={{
-                left: pos.left,
-                top: pos.top,
-                width: pos.width,
-                height: pos.height,
+                backgroundColor: 'transparent',
+              }}
+              onClick={() => handleSpotClick(spot)}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = dotColor;
+                e.currentTarget.style.backgroundColor = `${dotColor}20`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'transparent';
+                e.currentTarget.style.backgroundColor = 'transparent';
               }}
             >
-              {/* COLORED DOT INDICATOR - Based on spot type ONLY */}
-              <div className="absolute inset-0 flex items-center justify-center z-10">
-                <div 
-                  className="relative w-4 h-4 rounded-full border-2 border-white shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-125 transition-all duration-200 pointer-events-none flex items-center justify-center"
-                  style={{ 
-                    backgroundColor: dotColor,
-                    borderColor: 'white'
-                  }}
-                >
-                  {/* OCCUPANCY ICON OVERLAY - centered on the dot */}
-                  {occupancy.icon && (
-                    <div 
-                      className="absolute inset-0 flex items-center justify-center"
-                      style={{ 
-                        width: '100%', 
-                        height: '100%',
-                        color: occupancy.icon.color,
-                        padding: '3px'
-                      }}
-                      dangerouslySetInnerHTML={{ __html: occupancy.icon.svg }}
-                    />
-                  )}
-                </div>
-              </div>
-              
-              {/* HOVER AREA - Invisible but clickable */}
-              <button
-                className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 border-transparent rounded pointer-events-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{
-                  backgroundColor: 'transparent',
-                }}
-                onClick={() => handleSpotClick(spot)}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = dotColor;
-                  e.currentTarget.style.backgroundColor = `${dotColor}20`; // 20 = ~12.5% opacity
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-                title={titleText}
-              >
-                {/* Invisible area - just for interaction */}
-              </button>
-              
-              {/* TOOLTIP */}
-              <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-2 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg min-w-[180px] z-50">
-                <div className="font-bold text-center mb-1">{spot.spotNumber}</div>
-                
-                {/* Availability Status */}
-                <div className="text-center mb-1">
-                  {isUnassigned ? (
-                    <span className="text-green-300">Available (Unassigned)</span>
-                  ) : occupancy.type === 'company' ? (
-                    <span className="text-blue-300">Occupied by: {spot.companyName}</span>
-                  ) : (
-                    <span className="text-purple-300">Parker: {spot.parkerName}</span>
-                  )}
+              {/* Invisible area - just for interaction */}
+            </button>
+            
+            {/* UPDATED TOOLTIP - Positioned below the spot */}
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl min-w-[200px]">
+                {/* Tooltip header with spot number */}
+                <div className="bg-gray-800 px-3 py-2 rounded-t-lg font-bold text-center border-b border-gray-700">
+                  {spot.spotNumber}
                 </div>
                 
-                {spot.spotTypeConfig && (
-                  <div className="text-center" style={{ color: spot.spotTypeConfig.color }}>
-                    {spot.spotTypeConfig.name}
+                {/* Tooltip content */}
+                <div className="p-3">
+                  {/* Spot Type */}
+                  {spot.spotTypeConfig && (
+                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
+                      <span className="text-gray-400">Type:</span>
+                      <span className="font-medium" style={{ color: spot.spotTypeConfig.color }}>
+                        {spot.spotTypeConfig.name}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Occupancy Status */}
+                  <div className="mb-2 pb-2 border-b border-gray-700">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-gray-400">Status:</span>
+                      {isUnassigned ? (
+                        <span className="text-green-400 font-medium">Available</span>
+                      ) : (
+                        <span className={occupancy.type === 'company' ? 'text-blue-400' : 'text-purple-400'}>
+                          Occupied
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Show occupant details */}
+                    {!isUnassigned && (
+                      <div className="text-xs mt-1">
+                        {occupancy.type === 'company' ? (
+                          <div className="text-blue-300 truncate" title={spot.companyName}>
+                            Company: {spot.companyName}
+                          </div>
+                        ) : (
+                          <div className="text-purple-300 truncate" title={spot.parkerName}>
+                            Parker: {spot.parkerName}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                  
+                  {/* Click hint */}
+                  <div className="text-xs text-center text-gray-500 italic">
+                    Click for more details
+                  </div>
+                </div>
                 
-                {/* Downward-pointing triangle arrow */}
-                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2">
-                  <div className="w-0 h-0 border-l-6 border-r-6 border-t-6 border-transparent border-t-gray-900"></div>
+                {/* Tooltip arrow - pointing up to the spot */}
+                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1">
+                  <div className="w-0 h-0 border-l-6 border-r-6 border-b-6 border-transparent border-b-gray-900"></div>
                 </div>
               </div>
             </div>
-          )
-        })}
-      </div>
-    )
-  };
+          </div>
+        )
+      })}
+    </div>
+  )
+};
 
   // ==================== MAIN RENDER ====================
 
@@ -643,7 +661,7 @@ export default function PublicFloorPage() {
                 <div className="flex items-center gap-4 mt-2 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-sm border border-gray-300"></div>
-                    <span className="text-gray-600">{spots.length} parking spots</span>
+                    <span className="text-gray-600">{spots.length} total spots</span>
                   </div>
                   <span className="text-gray-600">
                     {spots.filter(s => getOccupancyStatus(s).type !== null).length > 0 && 
@@ -654,7 +672,6 @@ export default function PublicFloorPage() {
             </div>
             
             <div className="flex flex-wrap gap-2">
-              {/* Navigation buttons */}
               <button
                 onClick={goToPrevFloor}
                 className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1"
@@ -668,8 +685,6 @@ export default function PublicFloorPage() {
               >
                 Next →
               </button>
-              
-             
               
               <Link 
                 href="/" 
@@ -720,83 +735,80 @@ export default function PublicFloorPage() {
             )}
           </div>
           
-
-  <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-2 rounded-lg shadow-md text-xs z-10">
-  <div className="text-gray-700 font-medium mb-2">Space Type Colors</div>
-  <div className="space-y-1 max-h-[300px] overflow-y-auto pr-1">
-    {SPOT_TYPES.map(type => {
-      // Count spots of this type
-      const spotCount = spots.filter(s => s.spotTypeConfig?.id === type.id).length;
-      
-      // Count occupied spots of this type
-      const occupiedSpots = spots.filter(s => 
-        s.spotTypeConfig?.id === type.id && 
-        getOccupancyStatus(s).type !== null
-      );
-      
-      // Count company spots
-      const companySpots = spots.filter(s => 
-        s.spotTypeConfig?.id === type.id && 
-        getOccupancyStatus(s).type === 'company'
-      );
-      
-      // Count person spots
-      const personSpots = spots.filter(s => 
-        s.spotTypeConfig?.id === type.id && 
-        getOccupancyStatus(s).type === 'person'
-      );
-      
-      return (
-        <div key={type.id} className="flex items-start gap-2 py-1">
-          {/* Color indicator */}
-          <div 
-            className="w-3 h-3 rounded-full flex-shrink-0 mt-0.5" 
-            style={{ backgroundColor: type.color }}
-          ></div>
-          
-          {/* Type name and counts */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700 font-medium">{type.name}</span>
-              <span className="text-gray-500 text-xs">{spotCount}</span>
+          {/* IMPROVED SPACE TYPE LEGEND - Better organization */}
+          <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 max-w-[250px] border border-gray-200">
+            <div className="p-3 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
+              <p className="text-gray-500 text-xs mt-1">Total: {spots.length} spaces</p>
             </div>
             
-            {/* Occupancy indicators */}
-            {(occupiedSpots.length > 0) && (
-              <div className="flex items-center gap-3 mt-1">
-                {companySpots.length > 0 && (
-                  <div className="flex items-center gap-1" title={`${companySpots.length} company-occupied spaces`}>
-                    <div className="w-3 h-3 flex items-center justify-center">
-                      <div 
-                        className="w-2 h-2"
-                        style={{ color: type.color }}
-                        dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.company.svg }}
-                      />
+            <div className="p-3 max-h-[400px] overflow-y-auto">
+              <div className="space-y-3">
+                {SPOT_TYPES.map(type => {
+                  // Count spots of this type
+                  const typeSpots = spots.filter(s => s.spotTypeConfig?.id === type.id);
+                  const totalCount = typeSpots.length;
+                  
+                  if (totalCount === 0) return null;
+                  
+                  // Count occupancy statuses
+                  const availableCount = typeSpots.filter(s => getOccupancyStatus(s).type === null).length;
+                  const companyCount = typeSpots.filter(s => getOccupancyStatus(s).type === 'company').length;
+                  const personCount = typeSpots.filter(s => getOccupancyStatus(s).type === 'person').length;
+                  
+                  return (
+                    <div key={type.id} className="border-l-2 pl-2" style={{ borderLeftColor: type.color }}>
+                      {/* Type header */}
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: type.color }}
+                          ></div>
+                          <span className="font-medium text-gray-700">{type.name}</span>
+                        </div>
+                        <span className="font-bold text-gray-800">{totalCount}</span>
+                      </div>
+                      
+                      {/* Occupancy breakdown */}
+                      <div className="grid grid-cols-3 gap-1 mt-1 text-center text-[10px]">
+                        {availableCount > 0 && (
+                          <div className="bg-green-50 text-green-700 rounded px-1 py-0.5">
+                            <div>Available</div>
+                            <div className="font-bold">{availableCount}</div>
+                          </div>
+                        )}
+                        
+                        {companyCount > 0 && (
+                          <div className="bg-blue-50 text-blue-700 rounded px-1 py-0.5">
+                            <div className="flex items-center justify-center gap-0.5">
+                              <div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.company.svg }} />
+                              <span>Company</span>
+                            </div>
+                            <div className="font-bold">{companyCount}</div>
+                          </div>
+                        )}
+                        
+                        {personCount > 0 && (
+                          <div className="bg-purple-50 text-purple-700 rounded px-1 py-0.5">
+                            <div className="flex items-center justify-center gap-0.5">
+                              <div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.person.svg }} />
+                              <span>Personal</span>
+                            </div>
+                            <div className="font-bold">{personCount}</div>
+                          </div>
+                        )}
+                        
+                        {availableCount === 0 && companyCount === 0 && personCount === 0 && (
+                          <div className="col-span-3 text-gray-400 italic">No spots</div>
+                        )}
+                      </div>
                     </div>
-                    <span className="text-gray-600 text-xs">{companySpots.length}</span>
-                  </div>
-                )}
-                
-                {personSpots.length > 0 && (
-                  <div className="flex items-center gap-1" title={`${personSpots.length} personally-occupied spaces`}>
-                    <div className="w-3 h-3 flex items-center justify-center">
-                      <div 
-                        className="w-2 h-2"
-                        style={{ color: type.color }}
-                        dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.person.svg }}
-                      />
-                    </div>
-                    <span className="text-gray-600 text-xs">{personSpots.length}</span>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      );
-    })}
-  </div>
-</div>
         </div>
 
         {/* Selected Spot Panel & Spot List */}
