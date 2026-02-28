@@ -5,7 +5,6 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { getDisplayFloor, getDisplayLabel } from '@/utils/floorUtils'
 
 // Spot type configurations - no icons
 const SPOT_TYPES = [
@@ -62,7 +61,7 @@ const getOccupancyStatus = (spot) => {
 export default function PublicFloorPage() {
   const params = useParams()
   const router = useRouter()
-  const floorId = params.floorId || '3'
+  const floorId = params.floorId || '1'
 
   const [svgContent, setSvgContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -75,14 +74,6 @@ export default function PublicFloorPage() {
   const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 800 })
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Redirect floor 1 to floor 3 (floor 1 not available; start from 3)
-  useEffect(() => {
-    const id = parseInt(floorId, 10)
-    if (id === 1) {
-      router.replace('/floor/3')
-    }
-  }, [floorId, router])
-
   // Navigation functions
   const goToNextFloor = () => {
     const nextFloor = parseInt(floorId) + 1
@@ -90,7 +81,7 @@ export default function PublicFloorPage() {
   }
 
   const goToPrevFloor = () => {
-    const prevFloor = Math.max(2, parseInt(floorId) - 1)
+    const prevFloor = Math.max(1, parseInt(floorId) - 1)
     router.push(`/floor/${prevFloor}`)
   }
 
@@ -648,7 +639,7 @@ export default function PublicFloorPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading parking map for {getDisplayLabel(floorId)}...</p>
+          <p className="text-gray-600">Loading parking map for floor {floorId}...</p>
         </div>
       </div>
     )
@@ -661,7 +652,7 @@ export default function PublicFloorPage() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {getDisplayLabel(floorId)} - Parking Spaces
+                Floor {floorId} - Parking Spaces
               </h1>
               <p className="text-gray-600 mt-1">
                 View parking spots. Click on any spot for details.
@@ -715,7 +706,7 @@ export default function PublicFloorPage() {
               <div className="text-center p-8 absolute inset-0 flex items-center justify-center bg-white">
                 <div>
                   <div className="text-4xl mb-4">🏢</div>
-                  <p className="text-gray-600">{getDisplayLabel(floorId)}</p>
+                  <p className="text-gray-600">Floor {floorId}</p>
                   <p className="text-sm text-gray-400 mt-2">{error}</p>
                 </div>
               </div>

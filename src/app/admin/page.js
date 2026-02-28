@@ -3,12 +3,11 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
-import { getDisplayLabel } from '@/utils/floorUtils'
 
 export default function AdminDashboard() {
   const { user } = useAuth()
 
-  const floors = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  const floors = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -31,7 +30,7 @@ export default function AdminDashboard() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-800 text-lg">{getDisplayLabel(floor)}</h3>
+                  <h3 className="font-semibold text-gray-800 text-lg">Floor {floor}</h3>
                   <p className="text-sm text-gray-500 mt-1">Edit parking layout</p>
                 </div>
                 <span className="text-blue-600 text-xl">→</span>

@@ -10,10 +10,9 @@ export default function AdminNav() {
 
   const navItems = [
     { href: '/admin', label: 'Dashboard' },
-    { href: '/admin/floor/2', label: 'P 3' },
-    { href: '/admin/floor/3', label: 'P 4' },
-    { href: '/admin/floor/4', label: 'P 5' },
-    { href: '/admin/floor/5', label: 'P 6' },
+    { href: '/admin/floor/1', label: 'Floor 1' },
+    { href: '/admin/floor/2', label: 'Floor 2' },
+    { href: '/admin/floor/3', label: 'Floor 3' },
   ]
 
   return (

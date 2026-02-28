@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getDisplayLabel } from '@/utils/floorUtils'
 
 export default function BackgroundImage({ floor }) {
   const [imageError, setImageError] = useState(false)
@@ -38,9 +37,9 @@ export default function BackgroundImage({ floor }) {
     setImageLoaded(false)
   }
 
-  // Get floor display name (after 12: 13→14, 14→15, etc.)
+  // Get floor display name
   const getFloorName = () => {
-    return getDisplayLabel(floor)
+    return `Floor ${floor}`
   }
 
   return (
@@ -90,7 +89,7 @@ export default function BackgroundImage({ floor }) {
       
       {/* Debug info */}
       <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-        {getDisplayLabel(floor)} | File: parking_page-{floor.toString().padStart(4, '0')}.png
+        Floor {floor} | File: parking_page-{floor.toString().padStart(4, '0')}.png
       </div>
       
       {/* Gradient overlay */}

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { getDisplayFloor, getDisplayLabel } from '@/utils/floorUtils'
 
 export default function FloorDropdown({ currentFloor, onFloorChange, mobile = false }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -34,25 +33,24 @@ export default function FloorDropdown({ currentFloor, onFloorChange, mobile = fa
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Responsive floor display (after 12: 13→14, 14→15, etc.)
+  // Responsive floor display
   const getFloorDisplay = () => {
-    const displayNum = getDisplayFloor(currentFloor)
     if (mobile) {
-      return currentFloorInfo?.name || getDisplayLabel(currentFloor)
+      return currentFloorInfo?.name || `Floor ${currentFloor}`
     }
     
     // Desktop - responsive based on screen width
     if (typeof window !== 'undefined') {
       if (window.innerWidth < 640) {
-        return currentFloorInfo?.label || displayNum
+        return currentFloorInfo?.label || currentFloor
       } else if (window.innerWidth < 768) {
-        return `P ${displayNum}`
+        return `F${currentFloor}`
       } else {
-        return currentFloorInfo?.name || getDisplayLabel(currentFloor)
+        return currentFloorInfo?.name || `Floor ${currentFloor}`
       }
     }
     
-    return currentFloorInfo?.name || getDisplayLabel(currentFloor)
+    return currentFloorInfo?.name || `Floor ${currentFloor}`
   }
 
   return (
