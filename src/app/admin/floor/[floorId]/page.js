@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { getDisplayLabel } from '@/utils/floorUtils'
 
 // Spot type configurations - only used for unoccupied borders
 const SPOT_TYPES = [
@@ -18,7 +19,7 @@ const SPOT_TYPES = [
 
 export default function AdminFloorPage() {
   const params = useParams()
-  const floorId = params.floorId || '1'
+  const floorId = params.floorId || '3'
  const router = useRouter()
   const [svgContent, setSvgContent] = useState('')
   const [loading, setLoading] = useState(true)
@@ -59,6 +60,14 @@ export default function AdminFloorPage() {
 
     loadSVG()
   }, [floorId])
+
+  // Redirect floor 1 to floor 3 (floor 1 not available; start from 3)
+  useEffect(() => {
+    const id = parseInt(floorId, 10)
+    if (id === 1) {
+      router.replace('/admin/floor/3')
+    }
+  }, [floorId, router])
 
   // ==================== DETECTION - ONLY YELLOW ====================
   
@@ -449,7 +458,7 @@ export default function AdminFloorPage() {
 }
 
 const goToPrevFloor = () => {
-  const prevFloor = Math.max(1, parseInt(floorId) - 1)
+  const prevFloor = Math.max(2, parseInt(floorId) - 1)
   router.push(`/admin/floor/${prevFloor}`)
 }
 
@@ -883,7 +892,7 @@ const goToPrevFloor = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Floor {floorId} - Parking Admin
+                {getDisplayLabel(floorId)} - Parking Admin
               </h1>
          
               {!loading && !error && (
@@ -949,7 +958,7 @@ const goToPrevFloor = () => {
               <div className="text-center p-8 absolute inset-0 flex items-center justify-center bg-white">
                 <div>
                   <div className="text-4xl mb-4">🏢</div>
-                  <p className="text-gray-600">Floor {floorId}</p>
+                  <p className="text-gray-600">{getDisplayLabel(floorId)}</p>
                   <p className="text-sm text-gray-400 mt-2">{error}</p>
                 </div>
               </div>

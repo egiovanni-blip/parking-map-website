@@ -1,5 +1,7 @@
 'use client'
 
+import { getDisplayLabel } from '@/utils/floorUtils'
+
 export default function ParkerModal({ space, isOpen, onClose }) {
   if (!isOpen || !space) return null
 
@@ -13,7 +15,7 @@ export default function ParkerModal({ space, isOpen, onClose }) {
         <div className="flex items-center justify-between p-6 border-b">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Parking Space {space.number}</h2>
-            <p className="text-gray-500">Floor {space.floor} • {space.type || 'Standard'}</p>
+            <p className="text-gray-500">{getDisplayLabel(space.floor)} • {space.type || 'Standard'}</p>
           </div>
           <button
             onClick={onClose}
