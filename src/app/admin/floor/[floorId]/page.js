@@ -883,7 +883,7 @@ const goToPrevFloor = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Floor {floorId} - Parking Admin
+                P{floorId} - Parking Admin
               </h1>
          
               {!loading && !error && (

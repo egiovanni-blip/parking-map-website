@@ -102,8 +102,7 @@ export default function Home() {
             <div className="bg-white/95 backdrop-blur rounded-lg sm:rounded-xl shadow px-3 sm:px-4 md:px-6 py-2 sm:py-3 border border-blue-100">
               <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 justify-between">
                 <div className="text-center min-w-[80px] sm:min-w-[100px]">
-                  <div className="text-xs sm:text-sm tracking-widest text-gray-500">FLOOR</div>
-                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600">{currentFloor}</div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-600">P{currentFloor}</div>
                 </div>
                 <div className="h-8 sm:h-10 w-px bg-blue-200"></div>
                 <div className="text-xs sm:text-sm md:text-base text-gray-600 flex-1 text-right sm:text-left">

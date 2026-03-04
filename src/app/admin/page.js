@@ -30,7 +30,7 @@ export default function AdminDashboard() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-800 text-lg">Floor {floor}</h3>
+                  <h3 className="font-semibold text-gray-800 text-lg">P{floor}</h3>
                   <p className="text-sm text-gray-500 mt-1">Edit parking layout</p>
                 </div>
                 <span className="text-blue-600 text-xl">→</span>

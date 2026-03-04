@@ -652,7 +652,7 @@ export default function PublicFloorPage() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Floor {floorId} - Parking Spaces
+                P{floorId} - Parking Spaces
               </h1>
               <p className="text-gray-600 mt-1">
                 View parking spots. Click on any spot for details.
