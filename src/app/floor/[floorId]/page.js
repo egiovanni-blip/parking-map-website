@@ -22,7 +22,7 @@ const FLOORS = [
   { route: 12, label: 'P14' },
   { route: 13, label: 'P15' },
   { route: 14, label: 'P16' },
-  { route: 15, label: 'P16' },
+  { route: 15, label: 'P17' },
   { route: 16, label: 'P18' },
   { route: 17, label: 'P18' },
 ]
