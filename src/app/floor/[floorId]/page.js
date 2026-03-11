@@ -19,8 +19,9 @@ const FLOORS = [
   { route: 10, label: 'P11' },
   { route: 11, label: 'P12' },
   // route 12 skipped — P13 doesn't exist
-  { route: 13, label: 'P14' },
-  { route: 14, label: 'P15' },
+  { route: 12, label: 'P14' },
+  { route: 13, label: 'P15' },
+  { route: 14, label: 'P16' },
   { route: 15, label: 'P16' },
   { route: 16, label: 'P18' },
   { route: 17, label: 'P18' },
