@@ -7,8 +7,10 @@ export function middleware(request) {
   const publicPaths = [
     '/tenant/login',
     '/tenant/verify',
+    '/tenant/callback',
     '/api/tenant/login',
     '/api/tenant/verify',
+    '/api/tenant/session',
     '/login',
     '/admin',
   ]

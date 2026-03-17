@@ -8,87 +8,83 @@ const supabase = createClient(
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
-    
-    // Log all params to see what Supabase is sending
     const token_hash = searchParams.get('token_hash')
     const token = searchParams.get('token')
     const type = searchParams.get('type')
     const code = searchParams.get('code')
-    
-    console.log('Verify params:', { token_hash, token, type, code })
+    const error = searchParams.get('error')
+    const error_description = searchParams.get('error_description')
 
-    // Try token_hash first (newer Supabase format)
+    console.log('Verify params:', JSON.stringify({ token_hash, token: token?.substring(0,10), type, code, error }))
+
+    if (error) {
+      console.log('Error from Supabase:', error_description)
+      return Response.redirect(new URL('/tenant/login?error=invalid', request.url))
+    }
+
+    let userEmail = null
+
+    // Try token_hash (PKCE)
     if (token_hash) {
-      const { data, error } = await supabase.auth.verifyOtp({
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
         token_hash,
         type: type || 'magiclink'
       })
-      
-      console.log('token_hash verify result:', data?.user?.email, error?.message)
-      
-      if (!error && data?.user) {
-        return await setSessionAndRedirect(request, data.user.email)
-      }
+      console.log('token_hash result:', data?.user?.email, verifyError?.message)
+      if (!verifyError && data?.user) userEmail = data.user.email
     }
 
-    // Try token (older format)
-    if (token) {
-      const { data, error } = await supabase.auth.verifyOtp({
+    // Try raw token
+    if (!userEmail && token) {
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: type || 'magiclink'
       })
-      
-      console.log('token verify result:', data?.user?.email, error?.message)
-      
-      if (!error && data?.user) {
-        return await setSessionAndRedirect(request, data.user.email)
-      }
+      console.log('token result:', data?.user?.email, verifyError?.message)
+      if (!verifyError && data?.user) userEmail = data.user.email
     }
 
-    // Try code (PKCE flow)
-    if (code) {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-      
-      console.log('code verify result:', data?.user?.email, error?.message)
-      
-      if (!error && data?.user) {
-        return await setSessionAndRedirect(request, data.user.email)
-      }
+    // Try code exchange
+    if (!userEmail && code) {
+      const { data, error: verifyError } = await supabase.auth.exchangeCodeForSession(code)
+      console.log('code result:', data?.user?.email, verifyError?.message)
+      if (!verifyError && data?.user) userEmail = data.user.email
     }
 
-    console.log('All verification methods failed')
-    return Response.redirect(new URL('/tenant/login?error=invalid', request.url))
+    if (!userEmail) {
+      console.log('Could not verify user')
+      return Response.redirect(new URL('/tenant/login?error=invalid', request.url))
+    }
+
+    // Look up company
+    const { data: tenant, error: tenantError } = await supabase
+      .from('tenant_contacts')
+      .select('*')
+      .eq('email', userEmail)
+      .eq('is_active', true)
+      .single()
+
+    console.log('Tenant:', tenant?.company_name, tenantError?.message)
+
+    if (tenantError || !tenant) {
+      return Response.redirect(new URL('/tenant/login?error=invalid', request.url))
+    }
+
+    const response = Response.redirect(new URL('/floor/2', request.url))
+    const cookieValue = JSON.stringify({
+      email: tenant.email,
+      company_name: tenant.company_name
+    })
+
+    response.headers.set(
+      'Set-Cookie',
+      `tenant_session=${encodeURIComponent(cookieValue)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax`
+    )
+
+    return response
 
   } catch (err) {
-    console.error('Tenant verify error:', err.message)
+    console.error('Verify error:', err.message)
     return Response.redirect(new URL('/tenant/login?error=invalid', request.url))
   }
-}
-
-async function setSessionAndRedirect(request, email) {
-  const { data: tenant, error: tenantError } = await supabase
-    .from('tenant_contacts')
-    .select('*')
-    .eq('email', email)
-    .eq('is_active', true)
-    .single()
-
-  console.log('Tenant lookup:', tenant?.company_name, tenantError?.message)
-
-  if (tenantError || !tenant) {
-    return Response.redirect(new URL('/tenant/login?error=invalid', request.url))
-  }
-
-  const response = Response.redirect(new URL('/floor/2', request.url))
-  const cookieValue = JSON.stringify({
-    email: tenant.email,
-    company_name: tenant.company_name
-  })
-
-  response.headers.set(
-    'Set-Cookie',
-    `tenant_session=${encodeURIComponent(cookieValue)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax`
-  )
-
-  return response
 }

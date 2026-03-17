@@ -34,7 +34,7 @@ export async function POST(request) {
     const { error: otpError } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/api/tenant/verify`,
+        emailRedirectTo: `https://therepublicmap.netlify.app/tenant/callback`,
         shouldCreateUser: false
       }
     })
