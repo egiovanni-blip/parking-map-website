@@ -5,6 +5,8 @@ export function middleware(request) {
 
   // Always public - no auth needed
   const alwaysPublic = [
+    '/admin/auth/callback',
+    '/auth/callback',
     '/tenant/login',
     '/tenant/callback',
     '/tenant/verify',
