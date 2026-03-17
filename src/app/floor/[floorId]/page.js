@@ -124,15 +124,25 @@ export default function PublicFloorPage() {
     }
   }, [])
   // Read tenant cookie
+// Read tenant cookie
 useEffect(() => {
-  const cookies = document.cookie.split(';')
-  const tenantCookie = cookies.find(c => c.trim().startsWith('tenant_session='))
-  if (tenantCookie) {
-    try {
-      const value = decodeURIComponent(tenantCookie.split('=')[1])
+  try {
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, ...val] = cookie.trim().split('=')
+      acc[key.trim()] = val.join('=')
+      return acc
+    }, {})
+    
+    if (cookies['tenant_session']) {
+      const value = decodeURIComponent(cookies['tenant_session'])
       const tenant = JSON.parse(value)
-      setTenantCompany(tenant.company_name)
-    } catch {}
+      if (tenant?.company_name) {
+        setTenantCompany(tenant.company_name)
+        console.log('Tenant company set:', tenant.company_name)
+      }
+    }
+  } catch (err) {
+    console.error('Cookie read error:', err)
   }
 }, [])
 

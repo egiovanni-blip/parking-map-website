@@ -3,24 +3,26 @@ import { NextResponse } from 'next/server'
 export function middleware(request) {
   const { pathname } = request.nextUrl
 
-  // Public paths that don't need auth
-  const publicPaths = [
+  // Always public - no auth needed
+  const alwaysPublic = [
     '/tenant/login',
-    '/tenant/verify',
     '/tenant/callback',
     '/api/tenant/login',
-    '/api/tenant/verify',
     '/api/tenant/session',
+    '/api/tenant/verify',
     '/login',
-    '/admin',
   ]
 
-  // Allow public paths and anything starting with them
-  if (publicPaths.some(path => pathname.startsWith(path))) {
+  if (alwaysPublic.some(path => pathname.startsWith(path))) {
     return NextResponse.next()
   }
 
-  // Check for tenant cookie on all other pages
+  // Admin routes - protected by Supabase auth (existing system)
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.next()
+  }
+
+  // All other routes require tenant cookie
   const tenantCookie = request.cookies.get('tenant_session')
 
   if (!tenantCookie) {
@@ -29,6 +31,9 @@ export function middleware(request) {
 
   try {
     const tenant = JSON.parse(decodeURIComponent(tenantCookie.value))
+    if (!tenant?.company_name) {
+      return NextResponse.redirect(new URL('/tenant/login', request.url))
+    }
     const response = NextResponse.next()
     response.headers.set('x-tenant-company', tenant.company_name)
     return response
