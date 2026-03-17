@@ -82,6 +82,7 @@ export default function PublicFloorPage() {
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [requestModalSpot, setRequestModalSpot] = useState(null)
   const [expandedCompany, setExpandedCompany] = useState(null)
+  const [tenantCompany, setTenantCompany] = useState(null)
 
   // Navigation
   const goToNextFloor = () => {
@@ -122,6 +123,18 @@ export default function PublicFloorPage() {
       document.removeEventListener('msfullscreenchange', handleFullscreenChange)
     }
   }, [])
+  // Read tenant cookie
+useEffect(() => {
+  const cookies = document.cookie.split(';')
+  const tenantCookie = cookies.find(c => c.trim().startsWith('tenant_session='))
+  if (tenantCookie) {
+    try {
+      const value = decodeURIComponent(tenantCookie.split('=')[1])
+      const tenant = JSON.parse(value)
+      setTenantCompany(tenant.company_name)
+    } catch {}
+  }
+}, [])
 
   // ==================== DETECTION FUNCTIONS ====================
 
@@ -394,7 +407,11 @@ export default function PublicFloorPage() {
                         <div className="text-xs mt-1">
                           {occupancy.type === 'company' ? (
                             <>
-                              <div className="text-blue-300 truncate">Company: {spot.companyName}</div>
+                              <div className="text-blue-300 truncate">
+  {tenantCompany && spot.companyName !== tenantCompany && spot.companyName !== 'Unassigned'
+    ? 'Company: Occupied'
+    : `Company: ${spot.companyName}`}
+</div>
                               {spot.parkerName && (
                                 <div className="text-purple-300">Parker: Occupied</div>
                               )}
@@ -628,7 +645,11 @@ export default function PublicFloorPage() {
                       <div className="text-2xl font-bold text-gray-900 mb-3">{selectedSpot.spotNumber}</div>
                       <div className="mb-3">
                         <div className="text-sm text-gray-500">Status</div>
-                        <div className="font-medium text-gray-700">{getOccupancyStatus(selectedSpot).description}</div>
+                        <div className="font-medium text-gray-700">
+  {tenantCompany && selectedSpot.companyName !== tenantCompany && selectedSpot.companyName !== 'Unassigned'
+    ? 'Occupied'
+    : getOccupancyStatus(selectedSpot).description}
+</div>
 {selectedSpot.parkerName && (
   <div className="font-medium text-gray-700 mt-1">Parker: {selectedSpot.parkerName}</div>
 )}
@@ -640,7 +661,7 @@ export default function PublicFloorPage() {
                         </div>
                       )}
                     </div>
-                    {!selectedSpot.parkerName && (
+                    {!selectedSpot.parkerName && (!tenantCompany || selectedSpot.companyName === tenantCompany || selectedSpot.companyName === 'Unassigned') && (
                       <button
                         onClick={() => handleRequestSpot(selectedSpot)}
                         className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
