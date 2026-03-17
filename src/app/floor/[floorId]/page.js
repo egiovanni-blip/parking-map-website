@@ -123,7 +123,7 @@ export default function PublicFloorPage() {
       document.removeEventListener('msfullscreenchange', handleFullscreenChange)
     }
   }, [])
-  // Read tenant cookie
+  
 // Read tenant cookie
 useEffect(() => {
   try {
@@ -418,7 +418,7 @@ useEffect(() => {
                           {occupancy.type === 'company' ? (
                             <>
                               <div className="text-blue-300 truncate">
-  {tenantCompany && spot.companyName !== tenantCompany && spot.companyName !== 'Unassigned'
+  {tenantCompany && spot.companyName?.toLowerCase() !== tenantCompany?.toLowerCase() && spot.companyName !== 'Unassigned'
     ? 'Company: Occupied'
     : `Company: ${spot.companyName}`}
 </div>
@@ -656,7 +656,7 @@ useEffect(() => {
                       <div className="mb-3">
                         <div className="text-sm text-gray-500">Status</div>
                         <div className="font-medium text-gray-700">
-  {tenantCompany && selectedSpot.companyName !== tenantCompany && selectedSpot.companyName !== 'Unassigned'
+  {tenantCompany && selectedSpot.companyName?.toLowerCase() !== tenantCompany?.toLowerCase() && selectedSpot.companyName !== 'Unassigned'
     ? 'Occupied'
     : getOccupancyStatus(selectedSpot).description}
 </div>
@@ -671,7 +671,7 @@ useEffect(() => {
                         </div>
                       )}
                     </div>
-                    {!selectedSpot.parkerName && (!tenantCompany || selectedSpot.companyName === tenantCompany || selectedSpot.companyName === 'Unassigned') && (
+                    {!selectedSpot.parkerName && (!tenantCompany || selectedSpot.companyName?.toLowerCase() === tenantCompany?.toLowerCase() || selectedSpot.companyName === 'Unassigned') && (
                       <button
                         onClick={() => handleRequestSpot(selectedSpot)}
                         className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
