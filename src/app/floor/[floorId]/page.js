@@ -396,11 +396,11 @@ export default function PublicFloorPage() {
                             <>
                               <div className="text-blue-300 truncate">Company: {spot.companyName}</div>
                               {spot.parkerName && (
-                                <div className="text-purple-300 truncate">Parker: {spot.parkerName}</div>
+                                <div className="text-purple-300">Parker: Occupied</div>
                               )}
                             </>
                           ) : (
-                            <div className="text-purple-300 truncate">Parker: {spot.parkerName}</div>
+                            <div className="text-purple-300">Parker: Occupied</div>
                           )}
                         </div>
                       )}
@@ -595,7 +595,7 @@ export default function PublicFloorPage() {
                         <span className="text-xs font-medium text-gray-800">{spot.spotNumber}</span>
                       </div>
                       <span className={`text-xs ${isAvailable ? 'text-green-600' : 'text-blue-600'}`}>
-                      {spot.parkerName ? 'Occupied' : 'Available'}
+                        {spot.parkerName ? 'Occupied' : 'Available'}
                       </span>
                     </button>
                   )

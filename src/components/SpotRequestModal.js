@@ -33,8 +33,10 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
 
   const [form, setForm] = useState({
     requester_name: '',
+    requester_role: '',
+    requester_phone: '',
     requester_email: '',
-    requester_company: '',
+    requester_company: preselectedSpot?.companyName && preselectedSpot.companyName !== 'Unassigned' ? preselectedSpot.companyName : '',
     notes: ''
   })
 
@@ -43,6 +45,9 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
     if (preselectedSpot) {
       setSelectedSpot(preselectedSpot)
       setStep(2)
+      if (preselectedSpot.companyName && preselectedSpot.companyName !== 'Unassigned') {
+        setForm(f => ({ ...f, requester_company: preselectedSpot.companyName }))
+      }
     }
   }, [preselectedSpot])
 
@@ -79,6 +84,8 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
   const handleSubmit = async () => {
     if (!selectedSpot) return setError('Please select a spot first.')
     if (!form.requester_name) return setError('Please enter your name.')
+    if (!form.requester_role) return setError('Please select your role.')
+    if (!form.requester_phone) return setError('Please enter your phone number.')
     if (!form.requester_email) return setError('Please enter your email.')
     if (!form.requester_company) return setError('Please enter your company name.')
 
@@ -98,6 +105,8 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
           spot_number: selectedSpot.original_label || selectedSpot.spotNumber,
           spot_type: selectedSpot.spot_type || selectedSpot.spotType,
           requester_name: form.requester_name,
+          requester_role: form.requester_role,
+          requester_phone: form.requester_phone,
           requester_email: form.requester_email,
           requester_company: form.requester_company,
           notes: form.notes
@@ -263,7 +272,30 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                       onChange={(e) => setForm({ ...form, requester_name: e.target.value })}
                     />
                   </div>
-
+                  <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Role <span className="text-red-500">*</span></label>
+  <select
+    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+    value={form.requester_role}
+    onChange={(e) => setForm({ ...form, requester_role: e.target.value })}
+  >
+    <option value="">— Select your role —</option>
+    <option value="Property Manager">Property Manager</option>
+    <option value="Office Manager">Office Manager</option>
+    <option value="Onsite Team">Onsite Team</option>
+    <option value="Individual">Individual</option>
+  </select>
+</div>
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Phone <span className="text-red-500">*</span></label>
+  <input
+    type="tel"
+    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+    placeholder="(123) 456-7890"
+    value={form.requester_phone}
+    onChange={(e) => setForm({ ...form, requester_phone: e.target.value })}
+  />
+</div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
                     <input
@@ -276,15 +308,21 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Company / Tenant Name <span className="text-red-500">*</span></label>
-                    <input
-                      type="text"
-                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                      placeholder="Acme Corp"
-                      value={form.requester_company}
-                      onChange={(e) => setForm({ ...form, requester_company: e.target.value })}
-                    />
-                  </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Company / Tenant Name <span className="text-red-500">*</span></label>
+  {selectedSpot?.companyName && selectedSpot.companyName !== 'Unassigned' ? (
+    <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-gray-50">
+      {selectedSpot.companyName}
+    </div>
+  ) : (
+    <input
+      type="text"
+      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+      placeholder="Acme Corp"
+      value={form.requester_company}
+      onChange={(e) => setForm({ ...form, requester_company: e.target.value })}
+    />
+  )}
+</div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
