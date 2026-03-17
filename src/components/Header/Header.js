@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
@@ -7,6 +8,16 @@ import Link from 'next/link'
 export default function Header() {
   const pathname = usePathname()
   const { user, loading } = useAuth()
+  const [isTenant, setIsTenant] = useState(false)
+
+  useEffect(() => {
+    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+      const [key, ...val] = cookie.trim().split('=')
+      acc[key.trim()] = val.join('=')
+      return acc
+    }, {})
+    if (cookies['tenant_session']) setIsTenant(true)
+  }, [])
 
   const isHomePage = pathname === '/'
   const isFloorPage = pathname.startsWith('/floor/')
@@ -51,8 +62,8 @@ export default function Header() {
                 View Parking
               </button>
               
-              {/* Admin Link (only when logged in) */}
-              {user && (
+              {/* Admin Link (only when logged in and NOT a tenant) */}
+              {user && !isTenant && (
                 <Link
                   href="/admin"
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
@@ -124,7 +135,7 @@ export default function Header() {
               </span>
             </button>
             
-            {user && (
+            {user && !isTenant && (
               <Link
                 href="/admin"
                 className={`flex-1 text-center pb-2 ${

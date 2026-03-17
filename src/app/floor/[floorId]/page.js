@@ -53,7 +53,7 @@ const OCCUPANCY_ICONS = {
 };
 
 const getOccupancyStatus = (spot) => {
-  const hasCompany = spot.companyName && spot.companyName !== 'Unassigned';
+  const hasCompany = spot.companyName && String(spot.companyName).toLowerCase() !== 'unassigned';
   const hasPerson = spot.parkerName;
   if (hasCompany) return { type: 'company', icon: OCCUPANCY_ICONS.company, description: `Occupied by: ${spot.companyName}` };
   if (hasPerson) return { type: 'person', icon: OCCUPANCY_ICONS.person, description: `Parker: ${spot.parkerName}` };
@@ -145,6 +145,17 @@ useEffect(() => {
     console.error('Cookie read error:', err)
   }
 }, [])
+
+  // Tenant filtering helpers (case-insensitive)
+  const companiesMatchCI = (a, b) => (String(a || '').toLowerCase()) === (String(b || '').toLowerCase())
+  const isUnassignedSpot = (name) => name == null || String(name).toLowerCase() === 'unassigned'
+  const isOtherCompany = (companyName) =>
+    tenantCompany && companyName && !isUnassignedSpot(companyName) && !companiesMatchCI(companyName, tenantCompany)
+  const canRequestSpot = (spot) => {
+    if (spot.parkerName) return false
+    if (!tenantCompany) return true
+    return companiesMatchCI(spot.companyName, tenantCompany) || isUnassignedSpot(spot.companyName)
+  }
 
   // ==================== DETECTION FUNCTIONS ====================
 
@@ -418,10 +429,8 @@ useEffect(() => {
                           {occupancy.type === 'company' ? (
                             <>
                               <div className="text-blue-300 truncate">
-  {tenantCompany && spot.companyName?.toLowerCase() !== tenantCompany?.toLowerCase() && spot.companyName !== 'Unassigned'
-    ? 'Company: Occupied'
-    : `Company: ${spot.companyName}`}
-</div>
+                                {isOtherCompany(spot.companyName) ? 'Company: Occupied' : `Company: ${spot.companyName}`}
+                              </div>
                               {spot.parkerName && (
                                 <div className="text-purple-300">Parker: Occupied</div>
                               )}
@@ -495,12 +504,14 @@ useEffect(() => {
               >
                 {currentIndex < FLOORS.length - 1 ? FLOORS[currentIndex + 1].label : 'Next'} →
               </button>
-              <button
-  onClick={() => handleRequestSpot()}
-  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex items-center gap-2"
->
-  🅿️ Request a Spot
-</button>
+              {!tenantCompany && (
+                <button
+                  onClick={() => handleRequestSpot()}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex items-center gap-2"
+                >
+                  🅿️ Request a Spot
+                </button>
+              )}
               <Link href="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-2">
                 ← Back to Home
               </Link>
@@ -573,7 +584,8 @@ useEffect(() => {
   const companies = {}
   spots.forEach(spot => {
     const company = spot.companyName
-    if (company && company !== 'Unassigned') {
+    if (company && !isUnassignedSpot(company)) {
+      if (tenantCompany && !companiesMatchCI(company, tenantCompany)) return
       if (!companies[company]) companies[company] = []
       companies[company].push(spot)
     }
@@ -656,10 +668,8 @@ useEffect(() => {
                       <div className="mb-3">
                         <div className="text-sm text-gray-500">Status</div>
                         <div className="font-medium text-gray-700">
-  {tenantCompany && selectedSpot.companyName?.toLowerCase() !== tenantCompany?.toLowerCase() && selectedSpot.companyName !== 'Unassigned'
-    ? 'Occupied'
-    : getOccupancyStatus(selectedSpot).description}
-</div>
+                          {isOtherCompany(selectedSpot.companyName) ? 'Occupied' : getOccupancyStatus(selectedSpot).description}
+                        </div>
 {selectedSpot.parkerName && (
   <div className="font-medium text-gray-700 mt-1">Parker: {selectedSpot.parkerName}</div>
 )}
@@ -671,7 +681,7 @@ useEffect(() => {
                         </div>
                       )}
                     </div>
-                    {!selectedSpot.parkerName && (!tenantCompany || selectedSpot.companyName?.toLowerCase() === tenantCompany?.toLowerCase() || selectedSpot.companyName === 'Unassigned') && (
+                    {canRequestSpot(selectedSpot) && (
                       <button
                         onClick={() => handleRequestSpot(selectedSpot)}
                         className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
@@ -727,7 +737,7 @@ useEffect(() => {
                               <span className={`text-lg font-bold ${isAvailable ? 'text-green-700' : occupancy.type === 'company' ? 'text-blue-700' : 'text-purple-700'}`}>{spot.spotNumber}</span>
                             </div>
                           </div>
-                          <div className="text-sm font-medium text-gray-900 truncate mb-1">{occupancy.type === 'company' ? spot.companyName : occupancy.type === 'person' ? 'Personal Spot' : 'Available'}</div>
+                          <div className="text-sm font-medium text-gray-900 truncate mb-1">{occupancy.type === 'company' ? (isOtherCompany(spot.companyName) ? 'Occupied' : spot.companyName) : occupancy.type === 'person' ? 'Personal Spot' : 'Available'}</div>
                           {spot.spotTypeConfig && <div className="text-xs text-gray-600 mb-1">{spot.spotTypeConfig.name}</div>}
                           {spot.parkerName && occupancy.type !== 'company' && <div className="text-xs text-purple-600 truncate">Parker: {spot.parkerName}</div>}
                         </div>
