@@ -37,6 +37,15 @@ export default function AdminDashboard() {
           Welcome back, {user?.email}
         </p>
       </div>
+      {/* Requests Navigation */}
+<div className="mt-6 mb-8">
+  <Link
+    href="/admin/requests"
+    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+  >
+    📋 View Parking Requests
+  </Link>
+</div>
 
       {/* Floor Navigation */}
       <div className="mt-8">

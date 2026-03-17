@@ -4,6 +4,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import SpotRequestModal from '@/components/SpotRequestModal'
 import { supabase } from '@/lib/supabase'
 
 // Floor route → display label mapping
@@ -78,6 +79,9 @@ export default function PublicFloorPage() {
   const containerRef = useRef(null)
   const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 800 })
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showRequestModal, setShowRequestModal] = useState(false)
+  const [requestModalSpot, setRequestModalSpot] = useState(null)
+  const [expandedCompany, setExpandedCompany] = useState(null)
 
   // Navigation
   const goToNextFloor = () => {
@@ -322,7 +326,22 @@ export default function PublicFloorPage() {
     };
   };
 
-  const handleSpotClick = (spot) => setSelectedSpot(spot);
+  const handleSpotClick = (spot) => {
+    setSelectedSpot(spot)
+  }
+  const handleDirectorySpotClick = (spot) => {
+    setSelectedSpot(spot)
+    // Scroll the spot into view by finding its dot element
+    const spotEl = document.querySelector(`[data-spot-id="${spot.id}"]`)
+    if (spotEl) {
+      spotEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      spotEl.click()
+    }
+  }
+  const handleRequestSpot = (spot = null) => {
+    setRequestModalSpot(spot)
+    setShowRequestModal(true)
+  }
 
   // ==================== RENDER ====================
 
@@ -345,6 +364,7 @@ export default function PublicFloorPage() {
                 </div>
               </div>
               <button
+                data-spot-id={spot.id}
                 className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 border-transparent rounded pointer-events-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
                 style={{ backgroundColor: 'transparent' }}
                 onClick={() => handleSpotClick(spot)}
@@ -373,7 +393,12 @@ export default function PublicFloorPage() {
                       {occupancy.type !== null && (
                         <div className="text-xs mt-1">
                           {occupancy.type === 'company' ? (
-                            <div className="text-blue-300 truncate">Company: {spot.companyName}</div>
+                            <>
+                              <div className="text-blue-300 truncate">Company: {spot.companyName}</div>
+                              {spot.parkerName && (
+                                <div className="text-purple-300 truncate">Parker: {spot.parkerName}</div>
+                              )}
+                            </>
                           ) : (
                             <div className="text-purple-300 truncate">Parker: {spot.parkerName}</div>
                           )}
@@ -443,6 +468,12 @@ export default function PublicFloorPage() {
               >
                 {currentIndex < FLOORS.length - 1 ? FLOORS[currentIndex + 1].label : 'Next'} →
               </button>
+              <button
+  onClick={() => handleRequestSpot()}
+  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex items-center gap-2"
+>
+  🅿️ Request a Spot
+</button>
               <Link href="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-2">
                 ← Back to Home
               </Link>
@@ -450,8 +481,11 @@ export default function PublicFloorPage() {
           </div>
         </div>
 
-        {/* SVG Container */}
-        <div ref={containerRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative">
+        {/* Map + Tenant Directory */}
+<div className="flex gap-4">
+
+{/* SVG Container */}
+<div ref={containerRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative flex-1">
           <div className="w-full h-[900px] relative overflow-hidden">
             {error && !loading && (
               <div className="text-center p-8 absolute inset-0 flex items-center justify-center bg-white">
@@ -474,7 +508,7 @@ export default function PublicFloorPage() {
           </div>
 
           {/* Legend */}
-          <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 max-w-[250px] border border-gray-200">
+          <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 max-w-[280px] border border-gray-200">
             <div className="p-3 border-b border-gray-200">
               <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
               <p className="text-gray-500 text-xs mt-1">Total: {spots.length} spaces</p>
@@ -507,8 +541,77 @@ export default function PublicFloorPage() {
                 })}
               </div>
             </div>
+            {/* Tenant Directory */}
+{(() => {
+  const companies = {}
+  spots.forEach(spot => {
+    const company = spot.companyName
+    if (company && company !== 'Unassigned') {
+      if (!companies[company]) companies[company] = []
+      companies[company].push(spot)
+    }
+  })
+  const companyList = Object.entries(companies).sort((a, b) => a[0].localeCompare(b[0]))
+  if (companyList.length === 0) return null
+  return (
+    <div className="border-t border-gray-200">
+      <div className="p-3 border-b border-gray-200">
+        <h3 className="font-semibold text-gray-800">🏢 Tenant Directory</h3>
+        <p className="text-gray-500 text-xs mt-1">{companyList.length} companies</p>
+      </div>
+      <div className="max-h-[300px] overflow-y-auto">
+        {companyList.map(([company, companySpots]) => (
+          <div key={company} className="border-b border-gray-100 last:border-0">
+            <button
+              className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors text-left"
+              onClick={() => setExpandedCompany(expandedCompany === company ? null : company)}
+            >
+              <span className="font-medium text-gray-700 text-xs truncate">{company}</span>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">
+                  {companySpots.length}
+                </span>
+                <span className="text-gray-400 text-xs">
+                  {expandedCompany === company ? '▲' : '▼'}
+                </span>
+              </div>
+            </button>
+            {expandedCompany === company && (
+              <div className="px-3 pb-2 space-y-1">
+                {companySpots.map(spot => {
+                  const occupancy = getOccupancyStatus(spot)
+                  const isAvailable = occupancy.type === null
+                  return (
+                    <button
+                      key={spot.id}
+                      onClick={() => handleDirectorySpotClick(spot)}
+                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-left"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: spot.spotTypeConfig?.color || '#9ca3af' }}
+                        />
+                        <span className="text-xs font-medium text-gray-800">{spot.spotNumber}</span>
+                      </div>
+                      <span className={`text-xs ${isAvailable ? 'text-green-600' : 'text-blue-600'}`}>
+                      {spot.parkerName ? 'Occupied' : 'Available'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})()}
           </div>
         </div>
+       
+</div>
 
         {/* Selected Spot Panel & Spot List */}
         {!loading && !error && (
@@ -526,6 +629,9 @@ export default function PublicFloorPage() {
                       <div className="mb-3">
                         <div className="text-sm text-gray-500">Status</div>
                         <div className="font-medium text-gray-700">{getOccupancyStatus(selectedSpot).description}</div>
+{selectedSpot.parkerName && (
+  <div className="font-medium text-gray-700 mt-1">Parker: {selectedSpot.parkerName}</div>
+)}
                       </div>
                       {selectedSpot.spotTypeConfig && (
                         <div className="mb-3">
@@ -534,6 +640,14 @@ export default function PublicFloorPage() {
                         </div>
                       )}
                     </div>
+                    {!selectedSpot.parkerName && (
+                      <button
+                        onClick={() => handleRequestSpot(selectedSpot)}
+                        className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                      >
+                        Request This Spot
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -600,6 +714,16 @@ export default function PublicFloorPage() {
           </div>
         )}
       </div>
+      <SpotRequestModal
+        isOpen={showRequestModal}
+        onClose={() => {
+          setShowRequestModal(false)
+          setRequestModalSpot(null)
+        }}
+        preselectedSpot={requestModalSpot}
+        floorId={floorId}
+        floorLabel={currentFloor.label}
+      />
     </div>
   )
 }
