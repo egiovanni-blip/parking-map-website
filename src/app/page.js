@@ -10,9 +10,23 @@ export default function Home() {
 
   useEffect(() => {
     const checkSession = async () => {
+      // Check for admin Supabase session
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         router.replace('/floor/2')
+        return
+      }
+      // Check for tenant session cookie via API
+      try {
+        const res = await fetch('/api/tenant/session')
+        if (res.ok) {
+          const data = await res.json()
+          if (data?.tenant) {
+            router.replace('/floor/2')
+          }
+        }
+      } catch {
+        // No tenant session, stay on home page
       }
     }
     checkSession()
