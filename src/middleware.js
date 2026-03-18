@@ -16,7 +16,7 @@ export function middleware(request) {
     '/login',
   ]
 
-  if (alwaysPublic.some(path => pathname.startsWith(path))) {
+  if (pathname === '/' || alwaysPublic.some(path => pathname.startsWith(path))) {
     return NextResponse.next()
   }
 
