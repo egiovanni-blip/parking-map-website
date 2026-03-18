@@ -20,14 +20,33 @@ export function middleware(request) {
     return NextResponse.next()
   }
 
-  // Check for Supabase auth (sb- cookies) - admins have these
-  const hasSupabaseAuth = request.cookies.getAll().some(c => c.name.startsWith('sb-'))
+  // Check for Supabase auth - admins have sb- or supabase cookies
+  const allCookies = request.cookies.getAll()
+  const hasSupabaseAuth = allCookies.some(c => {
+    const name = c.name.toLowerCase()
+    return name.startsWith('sb-') || name.includes('supabase')
+  })
   const tenantCookie = request.cookies.get('tenant_session')
   const hasTenantSession = !!tenantCookie
 
   // Admin routes - ONLY Supabase-authenticated users (admins)
   // Tenants with just tenant_session must be redirected away
   if (pathname.startsWith('/admin')) {
+    // Debug: log cookie names when hitting admin routes
+    console.log('[Middleware] /admin request - cookie names:', allCookies.map(c => c.name).join(', ') || '(none)')
+
+    // If user just came from auth callback, let them through (session may still be propagating)
+    const referer = request.headers.get('referer') || ''
+    const fromAuthCallback = referer.includes('/admin/auth/callback')
+    const hasAuthPendingCookie = request.cookies.get('admin_auth_pending')
+    if (fromAuthCallback || hasAuthPendingCookie) {
+      const response = NextResponse.next()
+      if (hasAuthPendingCookie) {
+        response.cookies.set('admin_auth_pending', '', { maxAge: 0, path: '/' })
+      }
+      return response
+    }
+
     if (hasSupabaseAuth) {
       return NextResponse.next()
     }
