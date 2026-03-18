@@ -24,7 +24,6 @@ export default function Header() {
   const isLoginPage = pathname === '/login'
   const isAdminPage = pathname.startsWith('/admin')
 
-  // Show header on ALL pages including admin
   return (
     <header className="bg-white shadow">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -32,16 +31,15 @@ export default function Header() {
           {/* Left side: Logo and Navigation */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <button  className="text-lg  font-bold text-blue-600 hover:text-blue-700">
-               The Republic
-              </button>
+              <Link href="/" className="text-lg font-bold text-blue-600 hover:text-blue-700">
+                The Republic
+              </Link>
             </div>
-            
+
             {/* Desktop Navigation */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {/* Home Navigation */}
               <Link
-              href="/"
+                href="/"
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                   isHomePage
                     ? 'border-blue-500 text-gray-900'
@@ -50,9 +48,9 @@ export default function Header() {
               >
                 Home
               </Link>
-              
-              {/* Floor Navigation */}
-              <button
+
+              <Link
+                href="/floor/2"
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
                   isFloorPage
                     ? 'border-blue-500 text-gray-900'
@@ -60,9 +58,8 @@ export default function Header() {
                 }`}
               >
                 View Parking
-              </button>
-              
-              {/* Admin Link (only when logged in and NOT a tenant) */}
+              </Link>
+
               {user && !isTenant && (
                 <Link
                   href="/admin"
@@ -83,13 +80,14 @@ export default function Header() {
             {loading ? (
               <div className="text-sm text-gray-500">Loading...</div>
             ) : user ? (
-              <div className="flex items-center space-x-4 ">
-            
+              <div className="flex items-center space-x-4">
                 <button
-                  onClick={() => {
-                    // Simple logout
+                  onClick={async () => {
+                    const { supabase } = await import('@/lib/supabase')
+                    await supabase.auth.signOut()
                     localStorage.removeItem('supabase-user')
                     localStorage.removeItem('supabase-auth-token')
+                    document.cookie = 'tenant_session=; path=/; max-age=0'
                     window.location.href = '/'
                   }}
                   className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
@@ -111,40 +109,30 @@ export default function Header() {
         {/* Mobile Navigation */}
         <div className="sm:hidden border-t border-gray-200 mt-2 pt-2">
           <div className="flex space-x-4">
-            <button
-              className={`flex-1 text-center pb-2 ${
-                isHomePage ? 'border-b-2 border-blue-500' : ''
-              }`}
+            <Link
+              href="/"
+              className={`flex-1 text-center pb-2 ${isHomePage ? 'border-b-2 border-blue-500' : ''}`}
             >
-              <span className={`text-sm font-medium ${
-                isHomePage ? 'text-gray-900' : 'text-gray-500'
-              }`}>
+              <span className={`text-sm font-medium ${isHomePage ? 'text-gray-900' : 'text-gray-500'}`}>
                 Home
               </span>
-            </button>
-            
-            <button
-              className={`flex-1 text-center pb-2 ${
-                isFloorPage ? 'border-b-2 border-blue-500' : ''
-              }`}
+            </Link>
+
+            <Link
+              href="/floor/2"
+              className={`flex-1 text-center pb-2 ${isFloorPage ? 'border-b-2 border-blue-500' : ''}`}
             >
-              <span className={`text-sm font-medium ${
-                isFloorPage ? 'text-gray-900' : 'text-gray-500'
-              }`}>
+              <span className={`text-sm font-medium ${isFloorPage ? 'text-gray-900' : 'text-gray-500'}`}>
                 View Parking
               </span>
-            </button>
-            
+            </Link>
+
             {user && !isTenant && (
               <Link
                 href="/admin"
-                className={`flex-1 text-center pb-2 ${
-                  isAdminPage ? 'border-b-2 border-blue-500' : ''
-                }`}
+                className={`flex-1 text-center pb-2 ${isAdminPage ? 'border-b-2 border-blue-500' : ''}`}
               >
-                <span className={`text-sm font-medium ${
-                  isAdminPage ? 'text-gray-900' : 'text-gray-500'
-                }`}>
+                <span className={`text-sm font-medium ${isAdminPage ? 'text-gray-900' : 'text-gray-500'}`}>
                   Admin
                 </span>
               </Link>

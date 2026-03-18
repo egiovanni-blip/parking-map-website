@@ -20,36 +20,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Check Supabase session (for magic link auth)
         const { data: { session } } = await supabase.auth.getSession()
-        
         if (session?.user) {
-          // Magic link session exists
           setUser(session.user)
-          
-          // Also save to localStorage for persistence
-          localStorage.setItem('supabase-user', JSON.stringify(session.user))
-          localStorage.setItem('supabase-auth-token', session.access_token)
-          
-          // Check if we're on login page, then redirect to /admin
           if (window.location.pathname === '/login') {
             router.push('/admin')
           }
         } else {
-          // Fallback to localStorage (for password/dev auth)
-          const storedUser = localStorage.getItem('supabase-user')
-          const storedToken = localStorage.getItem('supabase-auth-token')
-          
-          if (storedUser && storedToken) {
-            setUser(JSON.parse(storedUser))
-            
-            // Check if we're on login page, then redirect to /admin
-            if (window.location.pathname === '/login') {
-              router.push('/admin')
-            }
-          } else {
-            setUser(null)
-          }
+          setUser(null)
         }
       } catch (err) {
         console.error('Auth check error:', err)
@@ -61,21 +39,13 @@ export function AuthProvider({ children }) {
 
     checkSession()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user)
-          localStorage.setItem('supabase-user', JSON.stringify(session.user))
-          localStorage.setItem('supabase-auth-token', session.access_token)
-          
-          // Redirect to /admin after successful sign in
           router.push('/admin')
-          
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
-          localStorage.removeItem('supabase-user')
-          localStorage.removeItem('supabase-auth-token')
         }
       }
     )
@@ -83,45 +53,16 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [router])
 
-  const login = (email) => {
-    // Development login - creates localStorage session
-    const userData = {
-      id: 'user-' + Date.now(),
-      email: email,
-      name: email.split('@')[0]
-    }
-    
-    localStorage.setItem('supabase-user', JSON.stringify(userData))
-    localStorage.setItem('supabase-auth-token', 'dev-token-' + Date.now())
-    setUser(userData)
-    
-    // Redirect to /admin after login
-    router.push('/admin')
-    
-    return { success: true }
-  }
-
   const logout = async () => {
-    // Sign out from Supabase if magic link was used
     await supabase.auth.signOut()
-    
-    // Clear localStorage
     localStorage.removeItem('supabase-user')
     localStorage.removeItem('supabase-auth-token')
-    
-    // Clear state
+    document.cookie = 'tenant_session=; path=/; max-age=0'
     setUser(null)
-    
-    // Redirect to home
     router.push('/')
   }
 
-  const value = {
-    user,
-    loading,
-    login,
-    logout
-  }
+  const value = { user, loading, logout }
 
   return (
     <AuthContext.Provider value={value}>

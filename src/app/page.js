@@ -10,23 +10,20 @@ export default function Home() {
 
   useEffect(() => {
     const checkSession = async () => {
-      // Check for admin Supabase session
+      // Check admin Supabase session
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         router.replace('/floor/2')
         return
       }
-      // Check for tenant session cookie via API
-      try {
-        const res = await fetch('/api/tenant/session')
-        if (res.ok) {
-          const data = await res.json()
-          if (data?.tenant) {
-            router.replace('/floor/2')
-          }
-        }
-      } catch {
-        // No tenant session, stay on home page
+      // Check tenant session cookie
+      const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+        const [key, ...val] = cookie.trim().split('=')
+        acc[key.trim()] = val.join('=')
+        return acc
+      }, {})
+      if (cookies['tenant_session']) {
+        router.replace('/floor/2')
       }
     }
     checkSession()
@@ -35,7 +32,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md mx-auto">
-        {/* Header */}
         <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
           The Republic
         </h1>
@@ -43,7 +39,6 @@ export default function Home() {
           Parking &amp; Garage Access
         </p>
 
-        {/* Login Options */}
         <div className="space-y-4">
           <Link
             href="/tenant/login"
