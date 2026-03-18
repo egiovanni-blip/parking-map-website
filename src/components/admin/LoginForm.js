@@ -17,7 +17,7 @@ export default function LoginForm() {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim(),
         options: {
-          emailRedirectTo: `${window.location.origin}/admin/auth/callback`,
+          emailRedirectTo: 'https://therepublicmap.netlify.app/admin/auth/callback',
           shouldCreateUser: false, // ← CRITICAL: Prevent new signups
         },
       })
