@@ -2,38 +2,34 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
 
 export default function LoginForm() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
+  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!email) return setError('Please enter your email.')
-    if (!password) return setError('Please enter your password.')
 
     setLoading(true)
     setError('')
+    setSuccess(false)
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
-        password,
+        options: {
+          emailRedirectTo:
+            'https://parking-map-website.vercel.app/admin/auth/callback',
+          shouldCreateUser: false,
+        },
       })
 
-      if (signInError) {
-        if (signInError.message.toLowerCase().includes('invalid')) {
-          throw new Error('Incorrect email or password.')
-        }
-        throw new Error(signInError.message)
-      }
+      if (otpError) throw new Error(otpError.message)
 
-      router.replace('/floor/2')
-
+      setSuccess(true)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -68,19 +64,11 @@ export default function LoginForm() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your password"
-            />
-          </div>
+          {success && (
+            <div className="p-3 rounded-lg bg-green-50 text-green-800 border border-green-200 text-sm">
+              ✅ Check your email for the login link!
+            </div>
+          )}
 
           {error && (
             <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
