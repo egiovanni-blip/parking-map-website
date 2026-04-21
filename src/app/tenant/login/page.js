@@ -27,6 +27,7 @@ function TenantLoginForm() {
       })
       const data = await res.json()
       if (!res.ok) return setError(data.error || 'Something went wrong.')
+      await new Promise(resolve => setTimeout(resolve, 200))
       router.replace('/floor/2')
     } catch (err) {
       setError('Something went wrong. Please try again.')

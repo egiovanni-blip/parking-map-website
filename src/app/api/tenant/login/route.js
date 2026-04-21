@@ -47,7 +47,7 @@ export async function POST(request) {
     const response = Response.json({ success: true })
     response.headers.set(
       'Set-Cookie',
-      `tenant_session=${encodeURIComponent(cookieValue)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax`
+      `tenant_session=${encodeURIComponent(cookieValue)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; Secure; SameSite=Lax`
     )
 
     return response
