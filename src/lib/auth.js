@@ -5,15 +5,14 @@ export async function isUserAdmin() {
   try {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return false
-    
-    // Check if user exists in admin_users table
+
     const { data, error } = await supabase
       .from('admin_users')
       .select('id')
       .eq('id', user.id)
       .eq('is_active', true)
       .single()
-    
+
     return !error && data !== null
   } catch (error) {
     console.error('Auth check error:', error)
@@ -21,20 +20,15 @@ export async function isUserAdmin() {
   }
 }
 
-// Login with email magic link
-export async function loginAdmin(email) {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${window.location.origin}/admin/auth/callback`,
-    },
-  })
-  
+// Login with email + password
+export async function loginAdmin(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+
   if (error) {
     console.error('Login error:', error)
     return { success: false, error: error.message }
   }
-  
+
   return { success: true }
 }
 

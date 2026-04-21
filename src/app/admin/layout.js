@@ -10,11 +10,7 @@ export default function AdminLayout({ children }) {
 
   useEffect(() => {
     if (loading) return
-    
-    const hasAuth = localStorage.getItem('supabase-user') && 
-                    localStorage.getItem('supabase-auth-token')
-    
-    if (!user && !hasAuth) {
+    if (!user) {
       router.push('/login')
     }
   }, [user, loading, router])

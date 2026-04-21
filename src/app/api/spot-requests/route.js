@@ -43,7 +43,7 @@ export async function POST(request) {
         <p><b>Email:</b> ${requester_email}</p>
         ${notes ? `<p><b>Notes:</b> ${notes}</p>` : ''}
         <br/>
-        <p><a href="https://therepublicmap.netlify.app/admin/requests">Review request in Admin →</a></p>
+        <p><a href="https://parking-map-website.vercel.app/admin/requests">Review request in Admin →</a></p>
       `
     })
 
@@ -52,7 +52,7 @@ export async function POST(request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        text: `🅿️ *New Parking Request*\n*Spot:* ${spot_number} on ${floor_label}\n*Type:* ${spot_type || 'Not specified'}\n*From:* ${requester_name} — ${requester_company}\n*Email:* ${requester_email}${notes ? `\n*Notes:* ${notes}` : ''}\n<https://therepublicmap.netlify.app/admin/requests|Review in Admin →>`
+        text: `🅿️ *New Parking Request*\n*Spot:* ${spot_number} on ${floor_label}\n*Type:* ${spot_type || 'Not specified'}\n*From:* ${requester_name} — ${requester_company}\n*Email:* ${requester_email}${notes ? `\n*Notes:* ${notes}` : ''}\n<https://parking-map-website.vercel.app/admin/requests|Review in Admin →>`
       })
     })
 

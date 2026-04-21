@@ -14,11 +14,12 @@ export async function POST(request) {
 
     if (!email) return Response.json({ error: 'Email is required.' }, { status: 400 })
     if (!password) return Response.json({ error: 'Password is required.' }, { status: 400 })
+    if (password.length < 8) return Response.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
 
-    // Look up tenant by email
+    // Verify email exists in tenant_contacts
     const { data: tenant, error: tenantError } = await supabase
       .from('tenant_contacts')
-      .select('*')
+      .select('id, email')
       .eq('email', email)
       .eq('is_active', true)
       .single()
@@ -27,33 +28,23 @@ export async function POST(request) {
       return Response.json({ error: 'Email not found. Please contact your property manager.' }, { status: 404 })
     }
 
-    // Check if password has been set
-    if (!tenant.password_hash) {
-      return Response.json({ error: 'No password set for this account. Please set your password first.' }, { status: 401 })
+    // Hash and save password
+    const password_hash = await bcrypt.hash(password, 12)
+
+    const { error: updateError } = await supabase
+      .from('tenant_contacts')
+      .update({ password_hash })
+      .eq('id', tenant.id)
+
+    if (updateError) {
+      console.error('Password update error:', updateError.message)
+      return Response.json({ error: 'Failed to save password. Please try again.' }, { status: 500 })
     }
 
-    // Validate password
-    const valid = await bcrypt.compare(password, tenant.password_hash)
-    if (!valid) {
-      return Response.json({ error: 'Incorrect password. Please try again.' }, { status: 401 })
-    }
-
-    // Build session cookie
-    const cookieValue = JSON.stringify({
-      email: tenant.email,
-      company_name: tenant.company_name
-    })
-
-    const response = Response.json({ success: true })
-    response.headers.set(
-      'Set-Cookie',
-      `tenant_session=${encodeURIComponent(cookieValue)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; SameSite=Lax`
-    )
-
-    return response
+    return Response.json({ success: true })
 
   } catch (err) {
-    console.error('Tenant login error:', err.message)
+    console.error('Set password error:', err.message)
     return Response.json({ error: 'Something went wrong.' }, { status: 500 })
   }
 }
