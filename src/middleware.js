@@ -13,6 +13,9 @@ export function middleware(request) {
     '/api/tenant/session',
     '/api/tenant/verify',
     '/login',
+    '/tenant/set-password',
+    '/api/tenant/set-password',
+    '/attendant',
   ]
 
   if (pathname === '/' || alwaysPublic.some(path => pathname.startsWith(path))) {
