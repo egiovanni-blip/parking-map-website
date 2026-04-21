@@ -523,7 +523,9 @@ export default function PublicFloorPage() {
                     companies[company].push(spot)
                   }
                 })
-                const companyList = Object.entries(companies).sort((a, b) => a[0].localeCompare(b[0]))
+                const companyList = Object.entries(companies)
+                  .sort((a, b) => a[0].localeCompare(b[0]))
+                  .filter(([company]) => !tenantCompany || isAdmin || companiesMatchCI(company, tenantCompany))
                 if (companyList.length === 0) return null
                 return (
                   <div className="border-t border-gray-200">

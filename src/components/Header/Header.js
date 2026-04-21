@@ -95,6 +95,18 @@ export default function Header() {
                   Logout
                 </button>
               </div>
+            ) : isTenant ? (
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => {
+                    document.cookie = 'tenant_session=; path=/; max-age=0'
+                    window.location.href = '/tenant/login'
+                  }}
+                  className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                >
+                  Logout
+                </button>
+              </div>
             ) : (
               <Link
                 href="/login"
