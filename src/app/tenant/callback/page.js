@@ -27,7 +27,7 @@ export default function TenantCallbackPage() {
         setStatus(`Verified! Loading your parking map...`)
 
         // Look up company from tenant_contacts via API
-        const res = await fetch('/api/tenant/session', {
+        const res = await fetch('/api/tenant/resolve', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })

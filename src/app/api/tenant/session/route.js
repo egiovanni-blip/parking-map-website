@@ -1,29 +1,22 @@
-import { createClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-)
-
-export async function POST(request) {
+export async function GET() {
   try {
-    const { email } = await request.json()
-    if (!email) return Response.json({ error: 'Email required' }, { status: 400 })
+    const cookieStore = await cookies()
+    const tenantCookie = cookieStore.get('tenant_session')
 
-    const { data: tenant, error } = await supabase
-      .from('tenant_contacts')
-      .select('*')
-      .eq('email', email.toLowerCase().trim())
-      .eq('is_active', true)
-      .single()
-
-    if (error || !tenant) {
-      return Response.json({ error: 'Not found' }, { status: 404 })
+    if (!tenantCookie) {
+      return Response.json({ isTenant: false })
     }
 
-    return Response.json({ company_name: tenant.company_name })
+    const tenant = JSON.parse(decodeURIComponent(tenantCookie.value))
+    if (!tenant?.company_name) {
+      return Response.json({ isTenant: false })
+    }
+
+    return Response.json({ isTenant: true, company_name: tenant.company_name })
 
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500 })
+    return Response.json({ isTenant: false })
   }
 }

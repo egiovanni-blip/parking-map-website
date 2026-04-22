@@ -36,17 +36,17 @@ export async function POST(request) {
       return Response.json({ error: 'Incorrect password. Please try again.' }, { status: 401 })
     }
 
+    // Store as plain JSON string — no manual encoding, cookies() handles it
     const cookieValue = JSON.stringify({
       email: tenant.email,
       company_name: tenant.company_name
     })
 
     const cookieStore = await cookies()
-    cookieStore.set('tenant_session', encodeURIComponent(cookieValue), {
+    cookieStore.set('tenant_session', cookieValue, {
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
-      httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax'
     })
 
