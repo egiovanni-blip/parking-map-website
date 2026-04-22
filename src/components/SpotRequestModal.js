@@ -21,6 +21,14 @@ const FLOORS = [
   { route: 16, label: 'P18' },
 ]
 
+function formatUSPhoneInput(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 10)
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
 export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, floorId, floorLabel }) {
   const [step, setStep] = useState(1) // 1 = select spot, 2 = fill form
   const [selectedFloorId, setSelectedFloorId] = useState(floorId || '2')
@@ -30,6 +38,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
 
   const [form, setForm] = useState({
     requester_name: '',
@@ -82,10 +91,19 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
   }
 
   const handleSubmit = async () => {
+    setPhoneError('')
     if (!selectedSpot) return setError('Please select a spot first.')
     if (!form.requester_name) return setError('Please enter your name.')
     if (!form.requester_role) return setError('Please select your role.')
-    if (!form.requester_phone) return setError('Please enter your phone number.')
+    if (!form.requester_phone.trim()) {
+      return setError('Please enter your phone number.')
+    }
+    const phoneDigits = form.requester_phone.replace(/\D/g, '')
+    if (phoneDigits.length !== 10) {
+      setError('')
+      setPhoneError('Please enter a valid 10-digit phone number')
+      return
+    }
     if (!form.requester_email) return setError('Please enter your email.')
     if (!form.requester_company) return setError('Please enter your company name.')
 
@@ -129,6 +147,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
     setSelectedSpot(preselectedSpot || null)
     setSubmitted(false)
     setError('')
+    setPhoneError('')
     setForm({ requester_name: '', requester_email: '', requester_company: '', notes: '' })
     onClose()
   }
@@ -263,17 +282,17 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Your Name <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Parker Name <span className="text-red-500">*</span></label>
                     <input
                       type="text"
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                      placeholder="Jane Smith"
+                      placeholder="Parker Name"
                       value={form.requester_name}
                       onChange={(e) => setForm({ ...form, requester_name: e.target.value })}
                     />
                   </div>
                   <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Role <span className="text-red-500">*</span></label>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Your Role <span className="text-red-500">*</span></label>
   <select
     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
     value={form.requester_role}
@@ -287,21 +306,25 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
   </select>
 </div>
 <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Phone <span className="text-red-500">*</span></label>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Parker Phone <span className="text-red-500">*</span></label>
   <input
     type="tel"
     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-    placeholder="(123) 456-7890"
+    placeholder="Parker Phone"
     value={form.requester_phone}
-    onChange={(e) => setForm({ ...form, requester_phone: e.target.value })}
+    onChange={(e) => {
+      setPhoneError('')
+      setForm({ ...form, requester_phone: formatUSPhoneInput(e.target.value) })
+    }}
   />
+  {phoneError ? <p className="text-red-500 text-sm mt-1">{phoneError}</p> : null}
 </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Parker Email <span className="text-red-500">*</span></label>
                     <input
                       type="email"
                       className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                      placeholder="jane@company.com"
+                      placeholder="parker@company.com"
                       value={form.requester_email}
                       onChange={(e) => setForm({ ...form, requester_email: e.target.value })}
                     />
