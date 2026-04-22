@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
+import { cookies } from 'next/headers'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -15,7 +16,6 @@ export async function POST(request) {
     if (!email) return Response.json({ error: 'Email is required.' }, { status: 400 })
     if (!password) return Response.json({ error: 'Password is required.' }, { status: 400 })
 
-    // Look up tenant by email
     const { data: tenant, error: tenantError } = await supabase
       .from('tenant_contacts')
       .select('*')
@@ -27,30 +27,30 @@ export async function POST(request) {
       return Response.json({ error: 'Email not found. Please contact your property manager.' }, { status: 404 })
     }
 
-    // Check if password has been set
     if (!tenant.password_hash) {
       return Response.json({ error: 'No password set for this account. Please set your password first.' }, { status: 401 })
     }
 
-    // Validate password
     const valid = await bcrypt.compare(password, tenant.password_hash)
     if (!valid) {
       return Response.json({ error: 'Incorrect password. Please try again.' }, { status: 401 })
     }
 
-    // Build session cookie
     const cookieValue = JSON.stringify({
       email: tenant.email,
       company_name: tenant.company_name
     })
 
-    const response = Response.json({ success: true })
-    response.headers.set(
-      'Set-Cookie',
-      `tenant_session=${encodeURIComponent(cookieValue)}; Path=/; Max-Age=${60 * 60 * 24 * 30}; HttpOnly; Secure; SameSite=Lax`
-    )
+    const cookieStore = await cookies()
+    cookieStore.set('tenant_session', encodeURIComponent(cookieValue), {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax'
+    })
 
-    return response
+    return Response.json({ success: true })
 
   } catch (err) {
     console.error('Tenant login error:', err.message)
