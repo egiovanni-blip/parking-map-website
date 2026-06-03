@@ -6,25 +6,21 @@ export async function GET(request) {
   const code = requestUrl.searchParams.get('code')
   const error = requestUrl.searchParams.get('error')
 
-  console.log('=== ADMIN AUTH CALLBACK ===')
-  console.log('Full URL:', request.url)
-  console.log('Has code:', !!code)
-  console.log('Has error:', !!error)
-  console.log('Incoming cookies:', request.cookies.getAll().map(c => c.name))
+  const type = requestUrl.searchParams.get('type')
 
   if (error) {
-    console.error('Auth error:', error)
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent(error)}`, request.url)
     )
   }
 
   if (!code) {
-    console.log('No code - redirecting to login')
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  const response = NextResponse.redirect(new URL('/admin', request.url))
+  // Password reset links carry type=recovery — send them to the set-password page
+  const redirectTo = type === 'recovery' ? '/admin/set-password' : '/admin'
+  const response = NextResponse.redirect(new URL(redirectTo, request.url))
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -46,19 +42,13 @@ export async function GET(request) {
     }
   )
 
-  console.log('Exchanging code for session...')
-  const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+  const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
   if (exchangeError) {
-    console.error('Exchange error:', exchangeError.message)
     return NextResponse.redirect(
       new URL(`/login?error=${encodeURIComponent(exchangeError.message)}`, request.url)
     )
   }
-
-  console.log('Exchange success - user:', data?.session?.user?.email)
-  console.log('Cookies being set on response:', response.cookies.getAll().map(c => c.name))
-  console.log('=== END CALLBACK ===')
 
   return response
 }

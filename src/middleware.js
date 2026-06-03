@@ -5,6 +5,7 @@ export function middleware(request) {
 
   const alwaysPublic = [
     '/admin/auth/callback',
+    '/admin/set-password',
     '/auth/callback',
     '/tenant/login',
     '/tenant/set-password',
