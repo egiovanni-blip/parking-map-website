@@ -2,15 +2,21 @@
 
 import { useState } from 'react'
 import { loginAdmin } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
+
+const CALLBACK_URL = 'https://parking-map-website.vercel.app/admin/auth/callback'
 
 export default function LoginForm() {
+  const [mode, setMode] = useState('login') // 'login' | 'forgot'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
 
-  const handleSubmit = async (e) => {
+  // --- Login ---
+  const handleLogin = async (e) => {
     e.preventDefault()
     if (!email) return setError('Please enter your email.')
     if (!password) return setError('Please enter your password.')
@@ -24,9 +30,113 @@ export default function LoginForm() {
       setError(result.error || 'Invalid email or password.')
       setLoading(false)
     }
-    // On success, AuthContext's onAuthStateChange will redirect to /admin automatically
+    // On success, AuthContext's onAuthStateChange redirects to /admin
   }
 
+  // --- Forgot password ---
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    if (!email) return setError('Please enter your email.')
+
+    setLoading(true)
+    setError('')
+
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      { redirectTo: CALLBACK_URL }
+    )
+
+    if (resetError) {
+      setError(resetError.message)
+      setLoading(false)
+      return
+    }
+
+    setResetSent(true)
+    setLoading(false)
+  }
+
+  const switchMode = (newMode) => {
+    setMode(newMode)
+    setError('')
+    setResetSent(false)
+  }
+
+  // ---- Forgot password view ----
+  if (mode === 'forgot') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-transparent p-4">
+        <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 text-center">
+              Reset Password
+            </h2>
+            <p className="mt-2 text-gray-600 text-center">
+              Enter your email and we&apos;ll send you a reset link
+            </p>
+          </div>
+
+          {resetSent ? (
+            <div className="text-center py-4 space-y-4">
+              <div className="text-5xl">📧</div>
+              <p className="text-gray-700 font-medium">Check your email!</p>
+              <p className="text-gray-500 text-sm">
+                Click the link in the email to set your new password.
+              </p>
+              <button
+                onClick={() => switchMode('login')}
+                className="text-blue-600 hover:underline text-sm"
+              >
+                ← Back to login
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleForgotPassword} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="admin@example.com"
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  ← Back to login
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ---- Login view ----
   return (
     <div className="min-h-screen flex items-center justify-center bg-transparent p-4">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
@@ -39,7 +149,7 @@ export default function LoginForm() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Email
@@ -55,9 +165,18 @@ export default function LoginForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
+              <button
+                type="button"
+                onClick={() => switchMode('forgot')}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Forgot password?
+              </button>
+            </div>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
