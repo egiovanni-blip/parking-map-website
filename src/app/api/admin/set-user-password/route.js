@@ -91,7 +91,7 @@ export async function POST(request) {
     // Add the new user to admin_users so they appear in the admin list
     await supabaseAdmin
       .from('admin_users')
-      .insert([{ id: created.user.id, is_active: true }])
+      .insert([{ id: created.user.id, email: email.toLowerCase().trim(), is_active: true }])
 
     return NextResponse.json({ success: true, created: true })
   }
@@ -131,7 +131,7 @@ export async function POST(request) {
     if (!existingRow) {
       const { error: insertError } = await supabaseAdmin
         .from('admin_users')
-        .insert([{ id: targetUser.id, is_active: true }])
+        .insert([{ id: targetUser.id, email: targetUser.email, is_active: true }])
 
       if (insertError) {
         // Password was updated but we couldn't add to admin_users table — surface the error
