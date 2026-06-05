@@ -57,6 +57,12 @@ export default function AdminDashboard() {
 >
   🔑 Admin Passwords
 </Link>
+  <Link
+  href="/admin/team"
+  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium ml-3"
+>
+  👥 Admin Users
+</Link>
 </div>
 
       {/* Floor Navigation */}
