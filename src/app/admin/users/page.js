@@ -44,9 +44,10 @@ export default function AdminUsersPage() {
       if (!res.ok) {
         setError(data.error || 'Something went wrong.')
       } else {
-        const msg = data.created
+        let msg = data.created
           ? `Account created for ${email.trim()}. They can now log in with this password.`
           : `Password updated for ${email.trim()}. They can now log in with the new password.`
+        if (data.warning) msg += ` ⚠️ ${data.warning}`
         setSuccess(msg)
         setEmail('')
         setPassword('')

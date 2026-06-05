@@ -126,12 +126,21 @@ export async function POST(request) {
       .from('admin_users')
       .select('id')
       .eq('id', targetUser.id)
-      .single()
+      .maybeSingle()
 
     if (!existingRow) {
-      await supabaseAdmin
+      const { error: insertError } = await supabaseAdmin
         .from('admin_users')
         .insert([{ id: targetUser.id, is_active: true }])
+
+      if (insertError) {
+        // Password was updated but we couldn't add to admin_users table — surface the error
+        return NextResponse.json({
+          success: true,
+          created: false,
+          warning: `Password updated but failed to add to admin list: ${insertError.message}`,
+        })
+      }
     }
   }
 
