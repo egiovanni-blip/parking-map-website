@@ -61,20 +61,12 @@ export default function AdminDashboard() {
     🏢 Manage Tenant Contacts
   </Link>
   {isSuperAdmin && (
-    <>
-      <Link
-        href="/admin/users"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
-      >
-        🔑 Admin Passwords
-      </Link>
-      <Link
-        href="/admin/team"
-        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
-      >
-        👥 Admin Users
-      </Link>
-    </>
+    <Link
+      href="/admin/team"
+      className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+    >
+      👥 Admin Users
+    </Link>
   )}
 </div>
 
