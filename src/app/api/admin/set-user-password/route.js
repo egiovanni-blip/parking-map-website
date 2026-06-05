@@ -26,22 +26,27 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Unauthorized — no session found.' }, { status: 401 })
   }
 
-  // Use service role to check admin_users, bypassing any RLS restrictions
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { data: adminCheck } = await supabaseAdmin
-    .from('admin_users')
-    .select('id')
-    .eq('id', session.user.id)
-    .eq('is_active', true)
-    .single()
+  // Super admin (set via SUPER_ADMIN_EMAIL env var) bypasses the admin_users table.
+  // All other users must be in admin_users with is_active = true.
+  const isSuperAdmin = session.user.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
 
-  if (!adminCheck) {
-    return NextResponse.json({ error: 'Unauthorized — not an admin.' }, { status: 401 })
+  if (!isSuperAdmin) {
+    const { data: adminCheck } = await supabaseAdmin
+      .from('admin_users')
+      .select('id')
+      .eq('id', session.user.id)
+      .eq('is_active', true)
+      .single()
+
+    if (!adminCheck) {
+      return NextResponse.json({ error: 'Unauthorized — not an admin.' }, { status: 401 })
+    }
   }
 
   // 2. Parse and validate the request body
@@ -69,15 +74,18 @@ export async function POST(request) {
     return NextResponse.json({ error: 'No user found with that email.' }, { status: 404 })
   }
 
-  // 4. Confirm target is also an admin
-  const { data: targetAdminCheck } = await supabaseAdmin
-    .from('admin_users')
-    .select('id')
-    .eq('id', targetUser.id)
-    .single()
+  // 4. Regular admins can only set passwords for other admin_users.
+  //    Super admin can set passwords for any user.
+  if (!isSuperAdmin) {
+    const { data: targetAdminCheck } = await supabaseAdmin
+      .from('admin_users')
+      .select('id')
+      .eq('id', targetUser.id)
+      .single()
 
-  if (!targetAdminCheck) {
-    return NextResponse.json({ error: 'That email does not belong to an admin user.' }, { status: 403 })
+    if (!targetAdminCheck) {
+      return NextResponse.json({ error: 'That email does not belong to an admin user.' }, { status: 403 })
+    }
   }
 
   // 5. Set the password
