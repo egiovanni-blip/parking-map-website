@@ -59,7 +59,7 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
   }
 
-  // 3. Find the target user by email
+  // 3. Find or create the target user
   const { data: { users }, error: listError } = await supabaseAdmin.auth.admin.listUsers({
     page: 1,
     perPage: 1000,
@@ -69,13 +69,30 @@ export async function POST(request) {
     return NextResponse.json({ error: listError.message }, { status: 500 })
   }
 
-  const targetUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase().trim())
+  let targetUser = users.find(u => u.email?.toLowerCase() === email.toLowerCase().trim())
+
   if (!targetUser) {
-    return NextResponse.json({ error: 'No user found with that email.' }, { status: 404 })
+    // Super admin can create new users on the fly.
+    // Regular admins cannot create users — they can only update existing ones.
+    if (!isSuperAdmin) {
+      return NextResponse.json({ error: 'No user found with that email.' }, { status: 404 })
+    }
+
+    const { data: created, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: email.toLowerCase().trim(),
+      password,
+      email_confirm: true,
+    })
+
+    if (createError) {
+      return NextResponse.json({ error: createError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, created: true })
   }
 
-  // 4. Regular admins can only set passwords for other admin_users.
-  //    Super admin can set passwords for any user.
+  // 4. Regular admins can only update passwords for existing admin_users.
+  //    Super admin can update any user.
   if (!isSuperAdmin) {
     const { data: targetAdminCheck } = await supabaseAdmin
       .from('admin_users')
@@ -88,7 +105,7 @@ export async function POST(request) {
     }
   }
 
-  // 5. Set the password
+  // 5. Update the password for an existing user
   const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
     targetUser.id,
     { password }
@@ -98,5 +115,5 @@ export async function POST(request) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({ success: true, created: false })
 }

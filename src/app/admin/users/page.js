@@ -35,7 +35,10 @@ export default function AdminUsersPage() {
       if (!res.ok) {
         setError(data.error || 'Something went wrong.')
       } else {
-        setSuccess(`Password set successfully for ${email.trim()}. They can now log in with this password.`)
+        const msg = data.created
+          ? `Account created for ${email.trim()}. They can now log in with this password.`
+          : `Password updated for ${email.trim()}. They can now log in with the new password.`
+        setSuccess(msg)
         setEmail('')
         setPassword('')
         setConfirm('')
@@ -52,7 +55,7 @@ export default function AdminUsersPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Admin User Passwords</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Set a login password for any admin user. They can use it immediately to sign in.
+          Set a password for any admin user. If the account doesn&apos;t exist yet, it will be created automatically.
         </p>
       </div>
 
@@ -145,7 +148,7 @@ export default function AdminUsersPage() {
       </div>
 
       <p className="text-xs text-gray-400 mt-4 text-center">
-        The admin user must already exist in Supabase. This only sets their password — it does not create a new account.
+        New accounts are created automatically if the email doesn&apos;t exist yet.
       </p>
     </div>
   )
