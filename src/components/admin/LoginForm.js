@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { loginAdmin } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
-const CALLBACK_URL = 'https://parking-map-website.vercel.app/admin/auth/callback'
+const CALLBACK_URL = 'https://parking-map-website.vercel.app/admin/auth/recovery'
 
 export default function LoginForm() {
   const [mode, setMode] = useState('login') // 'login' | 'forgot'
