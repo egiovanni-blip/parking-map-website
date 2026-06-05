@@ -5,14 +5,17 @@ import { supabase } from '@/lib/supabase'
 
 export default function TenantContactsPage() {
   const [contacts, setContacts] = useState([])
+  const [companyOptions, setCompanyOptions] = useState([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ email: '', company_name: '' })
+  const [customCompany, setCustomCompany] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
     loadContacts()
+    loadCompanyOptions()
   }, [])
 
   const loadContacts = async () => {
@@ -25,9 +28,36 @@ export default function TenantContactsPage() {
     setLoading(false)
   }
 
+  const loadCompanyOptions = async () => {
+    // Pull distinct company names from parking_spots (the source of truth)
+    const { data: spots } = await supabase
+      .from('parking_spots')
+      .select('display_label')
+      .not('display_label', 'is', null)
+
+    const fromSpots = spots
+      ?.map(s => s.display_label?.trim())
+      .filter(name => name && name.toLowerCase() !== 'unassigned') ?? []
+
+    // Also include any companies already in tenant_contacts (manual additions)
+    const { data: existing } = await supabase
+      .from('tenant_contacts')
+      .select('company_name')
+
+    const fromContacts = existing?.map(c => c.company_name?.trim()).filter(Boolean) ?? []
+
+    const merged = [...new Set([...fromSpots, ...fromContacts])].sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    )
+    setCompanyOptions(merged)
+  }
+
   const handleAdd = async () => {
+    const resolvedCompany =
+      form.company_name === '__other__' ? customCompany.trim() : form.company_name
+
     if (!form.email) return setError('Please enter an email.')
-    if (!form.company_name) return setError('Please enter a company name.')
+    if (!resolvedCompany) return setError('Please select or enter a company name.')
     setAdding(true)
     setError('')
 
@@ -35,7 +65,7 @@ export default function TenantContactsPage() {
       .from('tenant_contacts')
       .insert([{
         email: form.email.toLowerCase().trim(),
-        company_name: form.company_name.trim()
+        company_name: resolvedCompany,
       }])
 
     if (error) {
@@ -43,7 +73,9 @@ export default function TenantContactsPage() {
     } else {
       setSuccess('Contact added successfully.')
       setForm({ email: '', company_name: '' })
+      setCustomCompany('')
       loadContacts()
+      loadCompanyOptions()
       setTimeout(() => setSuccess(''), 3000)
     }
     setAdding(false)
@@ -86,13 +118,29 @@ export default function TenantContactsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
-            <input
-              type="text"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-              placeholder="Must match exactly as in parking spots"
+            <select
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 bg-white"
               value={form.company_name}
-              onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-            />
+              onChange={(e) => {
+                setForm({ ...form, company_name: e.target.value })
+                if (e.target.value !== '__other__') setCustomCompany('')
+              }}
+            >
+              <option value="">— Select a company —</option>
+              {companyOptions.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+              <option value="__other__">Other (type manually)</option>
+            </select>
+            {form.company_name === '__other__' && (
+              <input
+                type="text"
+                className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                placeholder="Enter company name exactly as in parking spots"
+                value={customCompany}
+                onChange={(e) => setCustomCompany(e.target.value)}
+              />
+            )}
           </div>
         </div>
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
