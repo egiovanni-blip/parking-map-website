@@ -2,6 +2,7 @@
 'use client'
 
 import { useAuth } from '@/contexts/AuthContext'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
 // route = actual image/file number
@@ -28,6 +29,14 @@ const FLOORS = [
 
 export default function AdminDashboard() {
   const { user } = useAuth()
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/admin/my-role')
+      .then(res => res.json())
+      .then(data => setIsSuperAdmin(data.isSuperAdmin ?? false))
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -38,7 +47,7 @@ export default function AdminDashboard() {
         </p>
       </div>
       {/* Requests Navigation */}
-<div className="mt-6 mb-8">
+<div className="mt-6 mb-8 flex flex-wrap gap-3">
   <Link
     href="/admin/requests"
     className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
@@ -46,23 +55,27 @@ export default function AdminDashboard() {
     📋 View Parking Requests
   </Link>
   <Link
-  href="/admin/tenants"
-  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium ml-3"
->
-  🏢 Manage Tenant Contacts
-</Link>
-  <Link
-  href="/admin/users"
-  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium ml-3"
->
-  🔑 Admin Passwords
-</Link>
-  <Link
-  href="/admin/team"
-  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium ml-3"
->
-  👥 Admin Users
-</Link>
+    href="/admin/tenants"
+    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+  >
+    🏢 Manage Tenant Contacts
+  </Link>
+  {isSuperAdmin && (
+    <>
+      <Link
+        href="/admin/users"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+      >
+        🔑 Admin Passwords
+      </Link>
+      <Link
+        href="/admin/team"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+      >
+        👥 Admin Users
+      </Link>
+    </>
+  )}
 </div>
 
       {/* Floor Navigation */}

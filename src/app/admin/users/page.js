@@ -1,9 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function AdminUsersPage() {
   const [email, setEmail] = useState('')
+  const router = useRouter()
+
+  useEffect(() => {
+    fetch('/api/admin/my-role')
+      .then(res => res.json())
+      .then(data => { if (!data.isSuperAdmin) router.replace('/admin') })
+      .catch(() => router.replace('/admin'))
+  }, [router])
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPassword, setShowPassword] = useState(false)

@@ -1,12 +1,22 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function AdminTeamPage() {
   const [admins, setAdmins] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const router = useRouter()
+
+  useEffect(() => {
+    // Guard: redirect non-super-admins back to /admin
+    fetch('/api/admin/my-role')
+      .then(res => res.json())
+      .then(data => { if (!data.isSuperAdmin) router.replace('/admin') })
+      .catch(() => router.replace('/admin'))
+  }, [router])
 
   useEffect(() => {
     fetch('/api/admin/list-users')
