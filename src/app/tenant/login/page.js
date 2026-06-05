@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthPageBackdrop from '@/components/AuthPageBackdrop'
+import { useAuth } from '@/contexts/AuthContext'
 
 function TenantLoginForm() {
   const [email, setEmail] = useState('')
@@ -13,6 +14,7 @@ function TenantLoginForm() {
   const [error, setError] = useState('')
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { refreshTenantStatus } = useAuth()
   const errorParam = searchParams.get('error')
 
   const handleSubmit = async () => {
@@ -28,7 +30,8 @@ function TenantLoginForm() {
       })
       const data = await res.json()
       if (!res.ok) return setError(data.error || 'Something went wrong.')
-      await new Promise(resolve => setTimeout(resolve, 200))
+      // Update the AuthContext so the header shows Logout immediately (no refresh needed)
+      await refreshTenantStatus()
       router.replace('/floor/2')
     } catch (err) {
       setError('Something went wrong. Please try again.')

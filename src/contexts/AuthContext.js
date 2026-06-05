@@ -90,7 +90,13 @@ export function AuthProvider({ children }) {
     router.push('/tenant/login')
   }
 
-  const value = { user, isTenant, loading, logout, tenantLogout }
+  // Call this right after a successful tenant login so the header updates immediately
+  const refreshTenantStatus = async () => {
+    const tenantActive = await checkTenantSession()
+    setIsTenant(tenantActive)
+  }
+
+  const value = { user, isTenant, loading, logout, tenantLogout, refreshTenantStatus }
 
   return (
     <AuthContext.Provider value={value}>
