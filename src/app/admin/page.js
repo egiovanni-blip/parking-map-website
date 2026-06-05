@@ -51,6 +51,12 @@ export default function AdminDashboard() {
 >
   🏢 Manage Tenant Contacts
 </Link>
+  <Link
+  href="/admin/users"
+  className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium ml-3"
+>
+  🔑 Admin Passwords
+</Link>
 </div>
 
       {/* Floor Navigation */}
