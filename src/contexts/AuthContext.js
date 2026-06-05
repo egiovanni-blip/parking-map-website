@@ -56,8 +56,8 @@ export function AuthProvider({ children }) {
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user)
           setIsTenant(false)
-          // Don't redirect away from set-password pages
-          if (!window.location.pathname.includes('/set-password')) {
+          // Only redirect to admin when coming from the login page
+          if (window.location.pathname === '/login') {
             router.push('/admin')
           }
         } else if (event === 'SIGNED_OUT') {
