@@ -1,49 +1,42 @@
 import { NextResponse } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request) {
-  // Build the admin client (service role — server only, never exposed to browser)
+  // 1. Verify the requesting user is an active admin.
+  //    Use createServerClient with getAll() — required for @supabase/ssr 0.9
+  //    which stores the session as base64-encoded chunked cookies.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll() {
+          // read-only in this route — no need to set cookies
+        },
+      },
+    }
+  )
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized — no session found.' }, { status: 401 })
+  }
+
+  // Use service role to check admin_users, bypassing any RLS restrictions
   const supabaseAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  // 1. Verify the requesting user is an active admin.
-  //    @supabase/ssr 0.9 stores the session in chunked cookies, so we read
-  //    the access token directly and verify it with the admin client.
-  const allCookies = request.cookies.getAll()
-
-  let accessToken = null
-  for (const cookie of allCookies) {
-    // Cookie name: sb-<project-ref>-auth-token (or chunked: ...auth-token.0)
-    if (cookie.name.startsWith('sb-') && cookie.name.includes('auth-token')) {
-      try {
-        const parsed = JSON.parse(cookie.value)
-        if (parsed?.access_token) {
-          accessToken = parsed.access_token
-          break
-        }
-      } catch {
-        // chunked or encoded — skip
-      }
-    }
-  }
-
-  if (!accessToken) {
-    return NextResponse.json({ error: 'Unauthorized — no session found.' }, { status: 401 })
-  }
-
-  const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(accessToken)
-  if (userError || !user) {
-    return NextResponse.json({ error: 'Unauthorized — invalid session.' }, { status: 401 })
-  }
-
-  // Check admin_users via service role (bypasses RLS)
   const { data: adminCheck } = await supabaseAdmin
     .from('admin_users')
     .select('id')
-    .eq('id', user.id)
+    .eq('id', session.user.id)
     .eq('is_active', true)
     .single()
 
