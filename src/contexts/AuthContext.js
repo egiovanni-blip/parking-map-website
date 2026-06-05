@@ -17,13 +17,15 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  const checkTenantCookie = () => {
-    const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-      const [key, ...val] = cookie.trim().split('=')
-      acc[key.trim()] = val.join('=')
-      return acc
-    }, {})
-    return !!cookies['tenant_session']
+  // Use the server-side session API — more reliable than parsing document.cookie
+  const checkTenantSession = async () => {
+    try {
+      const res = await fetch('/api/tenant/session')
+      const data = await res.json()
+      return data.isTenant === true
+    } catch {
+      return false
+    }
   }
 
   useEffect(() => {
@@ -38,12 +40,14 @@ export function AuthProvider({ children }) {
           }
         } else {
           setUser(null)
-          setIsTenant(checkTenantCookie())
+          const tenantActive = await checkTenantSession()
+          setIsTenant(tenantActive)
         }
       } catch (err) {
         console.error('Auth check error:', err)
         setUser(null)
-        setIsTenant(checkTenantCookie())
+        const tenantActive = await checkTenantSession()
+        setIsTenant(tenantActive)
       } finally {
         setLoading(false)
       }
