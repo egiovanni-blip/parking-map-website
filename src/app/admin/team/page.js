@@ -29,6 +29,30 @@ export default function AdminTeamPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  const [deletingId, setDeletingId] = useState(null)
+
+  const handleDelete = async (admin) => {
+    if (!confirm(`Remove ${admin.email} from admin access? This cannot be undone.`)) return
+    setDeletingId(admin.id)
+    try {
+      const res = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: admin.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Failed to delete user.')
+      } else {
+        setAdmins(prev => prev.filter(a => a.id !== admin.id))
+      }
+    } catch {
+      alert('Something went wrong.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const formatDate = (iso) => {
     if (!iso) return '—'
     return new Date(iso).toLocaleDateString('en-US', {
@@ -70,6 +94,7 @@ export default function AdminTeamPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Last Sign In</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Added</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -98,6 +123,27 @@ export default function AdminTeamPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(admin.last_sign_in)}</td>
                   <td className="px-4 py-3 text-gray-400 text-xs">{formatDate(admin.created_at)}</td>
+                  <td className="px-4 py-3 text-right">
+                    {!admin.is_super && (
+                      <button
+                        onClick={() => handleDelete(admin)}
+                        disabled={deletingId === admin.id}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                        title="Remove admin"
+                      >
+                        {deletingId === admin.id ? (
+                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
