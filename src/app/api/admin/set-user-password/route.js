@@ -88,6 +88,11 @@ export async function POST(request) {
       return NextResponse.json({ error: createError.message }, { status: 500 })
     }
 
+    // Add the new user to admin_users so they appear in the admin list
+    await supabaseAdmin
+      .from('admin_users')
+      .insert([{ id: created.user.id, is_active: true }])
+
     return NextResponse.json({ success: true, created: true })
   }
 
@@ -113,6 +118,21 @@ export async function POST(request) {
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
+  }
+
+  // 6. If super admin set a password for someone not yet in admin_users, add them
+  if (isSuperAdmin) {
+    const { data: existingRow } = await supabaseAdmin
+      .from('admin_users')
+      .select('id')
+      .eq('id', targetUser.id)
+      .single()
+
+    if (!existingRow) {
+      await supabaseAdmin
+        .from('admin_users')
+        .insert([{ id: targetUser.id, is_active: true }])
+    }
   }
 
   return NextResponse.json({ success: true, created: false })
