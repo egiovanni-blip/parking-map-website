@@ -13,11 +13,12 @@ export default function AdminRecoveryPage() {
     // from the URL and fires PASSWORD_RECOVERY when it detects a recovery token.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
-        setMessage('Redirecting...')
+        setMessage('Redirecting to password reset...')
         router.push('/admin/set-password')
-      } else if (event === 'SIGNED_IN') {
-        router.push('/admin')
       }
+      // Intentionally ignore SIGNED_IN — Supabase fires it immediately for any
+      // existing session when the listener registers. Acting on it would redirect
+      // the user to /admin before PASSWORD_RECOVERY fires for the reset token.
     })
 
     // Fallback: if no event fires within 6 seconds, the link is invalid/expired
