@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { loginAdmin } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 
-const CALLBACK_URL = 'https://parking-map-website.vercel.app/admin/auth/recovery'
+const CALLBACK_URL = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/admin/auth/recovery`
 
 export default function LoginForm() {
   const [mode, setMode] = useState('login') // 'login' | 'forgot'
@@ -24,10 +23,13 @@ export default function LoginForm() {
     setLoading(true)
     setError('')
 
-    const result = await loginAdmin(email.trim(), password)
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
 
-    if (!result.success) {
-      setError(result.error || 'Invalid email or password.')
+    if (loginError) {
+      setError(loginError.message || 'Invalid email or password.')
       setLoading(false)
     }
     // On success, AuthContext's onAuthStateChange redirects to /admin

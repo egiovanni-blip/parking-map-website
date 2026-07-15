@@ -6,25 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SpotRequestModal from '@/components/SpotRequestModal'
 import { supabase } from '@/lib/supabase'
-
-const FLOORS = [
-  { route: 2,  label: 'P3'  },
-  { route: 3,  label: 'P4'  },
-  { route: 4,  label: 'P5'  },
-  { route: 5,  label: 'P6'  },
-  { route: 6,  label: 'P7'  },
-  { route: 7,  label: 'P8'  },
-  { route: 8,  label: 'P9'  },
-  { route: 9,  label: 'P10' },
-  { route: 10, label: 'P11' },
-  { route: 11, label: 'P12' },
-  { route: 12, label: 'P14' },
-  { route: 13, label: 'P15' },
-  { route: 14, label: 'P16' },
-  { route: 15, label: 'P17' },
-  { route: 16, label: 'P18' },
-  { route: 17, label: 'P18' },
-]
+import { FLOORS } from '@/lib/constants'
 
 const SPOT_TYPES = [
   { id: 'regular', name: 'Regular', color: '#fbbf24' },
@@ -32,7 +14,7 @@ const SPOT_TYPES = [
   { id: 'compact', name: 'Compact', color: '#a855f7' },
   { id: 'ev', name: 'EV', color: '#10b981' },
   { id: 'ada', name: 'ADA', color: '#3b82f6' },
-  { id: 'ada_ev', name: 'ADA + EV', color: '#1e40af' }
+  { id: 'ada_ev', name: 'ADA + EV', color: '#1e40af' },
 ]
 
 const OCCUPANCY_ICONS = {
@@ -79,6 +61,8 @@ export default function PublicFloorPage() {
   const [expandedCompany, setExpandedCompany] = useState(null)
   const [tenantCompany, setTenantCompany] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
+  // Map tooltip stays open only while hovering, or when pinned from Tenant Directory
+  const [pinnedTooltipSpotId, setPinnedTooltipSpotId] = useState(null)
 
   const goToNextFloor = () => {
     if (currentIndex < FLOORS.length - 1) router.push(`/floor/${FLOORS[currentIndex + 1].route}`)
@@ -109,27 +93,20 @@ export default function PublicFloorPage() {
     }
   }, [])
 
-  // Read tenant cookie or detect admin
+  // Resolve tenant/admin via server session APIs (tenant cookie is HttpOnly + signed)
   useEffect(() => {
     const init = async () => {
       try {
-        const cookies = document.cookie.split(';').reduce((acc, cookie) => {
-          const [key, ...val] = cookie.trim().split('=')
-          acc[key.trim()] = val.join('=')
-          return acc
-        }, {})
-        if (cookies['tenant_session']) {
-          const value = decodeURIComponent(cookies['tenant_session'])
-          const tenant = JSON.parse(value)
-          if (tenant?.company_name) {
-            setTenantCompany(tenant.company_name)
-          }
-        } else {
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) setIsAdmin(true)
+        const res = await fetch('/api/tenant/session')
+        const data = await res.json()
+        if (data.isTenant && data.company_name) {
+          setTenantCompany(data.company_name)
+          return
         }
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) setIsAdmin(true)
       } catch (err) {
-        console.error('Cookie read error:', err)
+        console.error('Session check error:', err)
       }
     }
     init()
@@ -141,8 +118,11 @@ export default function PublicFloorPage() {
     tenantCompany && companyName && !isUnassignedSpot(companyName) && !companiesMatchCI(companyName, tenantCompany)
   const canRequestSpot = (spot) => {
     if (spot.parkerName) return false
-    if (!tenantCompany) return true
-    return companiesMatchCI(spot.companyName, tenantCompany) || isUnassignedSpot(spot.companyName)
+    if (spot.spotTypeConfig?.id === 'reserved' || spot.spotType === 'reserved') return false
+    if (isOtherCompany(spot.companyName)) return false
+    if (!tenantCompany) return isUnassignedSpot(spot.companyName)
+    // Tenants may only request available spots assigned to their company
+    return companiesMatchCI(spot.companyName, tenantCompany)
   }
 
   const normalizeColor = (color) => {
@@ -315,11 +295,14 @@ export default function PublicFloorPage() {
     }
   }
 
-  const handleSpotClick = (spot) => setSelectedSpot(spot)
-  const handleDirectorySpotClick = (spot) => {
+  const handleSpotClick = (spot) => {
+    setPinnedTooltipSpotId(null)
     setSelectedSpot(spot)
-    const spotEl = document.querySelector(`[data-spot-id="${spot.id}"]`)
-    if (spotEl) { spotEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); spotEl.click() }
+  }
+  const handleDirectorySpotClick = (spot) => {
+    // Keep the map fixed — pin the hover-style popup from the directory only
+    setSelectedSpot(spot)
+    setPinnedTooltipSpotId(spot.id)
   }
   const handleRequestSpot = (spot = null) => {
     setRequestModalSpot(spot)
@@ -335,10 +318,16 @@ export default function PublicFloorPage() {
           if (!pos) return null
           const occupancy = getOccupancyStatus(spot)
           const dotColor = spot.spotTypeConfig?.color || '#9ca3af'
+          const isPinned = pinnedTooltipSpotId === spot.id
           return (
-            <div key={spot.id} className="absolute group" style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height }}>
+            <div key={spot.id} className={`absolute group ${isPinned ? 'z-[60]' : ''}`} style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height }}>
               <div className="absolute inset-0 flex items-center justify-center z-10">
-                <div className="relative w-4 h-4 rounded-full border-2 border-white shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-125 transition-all duration-200 pointer-events-none flex items-center justify-center" style={{ backgroundColor: dotColor, borderColor: 'white' }}>
+                <div
+                  className={`relative w-4 h-4 rounded-full border-2 border-white shadow-lg transition-all duration-200 pointer-events-none flex items-center justify-center ${
+                    isPinned ? 'opacity-100 scale-125 ring-2 ring-offset-1 ring-blue-400' : 'opacity-80 group-hover:opacity-100 group-hover:scale-125'
+                  }`}
+                  style={{ backgroundColor: dotColor, borderColor: 'white' }}
+                >
                   {occupancy.icon && (
                     <div className="absolute inset-0 flex items-center justify-center" style={{ width: '100%', height: '100%', color: occupancy.icon.color, padding: '3px' }} dangerouslySetInnerHTML={{ __html: occupancy.icon.svg }} />
                   )}
@@ -346,14 +335,33 @@ export default function PublicFloorPage() {
               </div>
               <button
                 data-spot-id={spot.id}
-                className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 border-transparent rounded pointer-events-auto focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{ backgroundColor: 'transparent' }}
+                type="button"
+                tabIndex={-1}
+                className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 rounded pointer-events-auto focus:outline-none"
+                style={{
+                  backgroundColor: isPinned ? `${dotColor}20` : 'transparent',
+                  borderColor: isPinned ? dotColor : 'transparent',
+                }}
+                onMouseDown={(e) => {
+                  // Prevent browser focus-scroll that shifts the map when selecting bottom spots
+                  e.preventDefault()
+                }}
                 onClick={() => handleSpotClick(spot)}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = dotColor; e.currentTarget.style.backgroundColor = `${dotColor}20` }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.backgroundColor = 'transparent' }}
+                onMouseEnter={(e) => {
+                  if (isPinned) return
+                  e.currentTarget.style.borderColor = dotColor
+                  e.currentTarget.style.backgroundColor = `${dotColor}20`
+                }}
+                onMouseLeave={(e) => {
+                  if (isPinned) return
+                  e.currentTarget.style.borderColor = 'transparent'
+                  e.currentTarget.style.backgroundColor = 'transparent'
+                }}
               />
-              {/* Tooltip */}
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              {/* Tooltip — hover only, or pinned from Tenant Directory click */}
+              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 transition-opacity pointer-events-none z-50 ${
+                isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+              }`}>
                 <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl min-w-[200px]">
                   <div className="bg-gray-800 px-3 py-2 rounded-t-lg font-bold text-center border-b border-gray-700">{spot.spotNumber}</div>
                   <div className="p-3">
@@ -367,19 +375,21 @@ export default function PublicFloorPage() {
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-gray-400">Status:</span>
                         {occupancy.type === null ? (
-                          <span className="text-green-400 font-medium">Available</span>
+                          <span className="text-green-400 font-medium">
+                            {spot.spotTypeConfig?.id === 'reserved' ? 'Reserved' : 'Available'}
+                          </span>
+                        ) : isOtherCompany(spot.companyName) ? (
+                          <span className="text-red-400 font-medium">Reserved</span>
                         ) : (
                           <span className={occupancy.type === 'company' ? 'text-blue-400' : 'text-purple-400'}>Occupied</span>
                         )}
                       </div>
-                      {occupancy.type !== null && (
+                      {occupancy.type !== null && !isOtherCompany(spot.companyName) && (
                         <div className="text-xs mt-1">
                           {occupancy.type === 'company' ? (
                             <>
                               <div className="text-blue-300 truncate">
-                                {isAdmin || !isOtherCompany(spot.companyName)
-                                  ? `Company: ${spot.companyName}`
-                                  : 'Company: Occupied'}
+                                Company: {spot.companyName}
                               </div>
                               {spot.parkerName && (
                                 <div className="text-purple-300">
@@ -395,7 +405,9 @@ export default function PublicFloorPage() {
                         </div>
                       )}
                     </div>
-                    <div className="text-xs text-center text-gray-500 italic">Click for more details</div>
+                    <div className="text-xs text-center text-gray-500 italic">
+                      {isPinned ? 'From tenant directory' : 'Click for more details'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -444,7 +456,7 @@ export default function PublicFloorPage() {
               <button onClick={goToNextFloor} disabled={currentIndex >= FLOORS.length - 1} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
                 {currentIndex < FLOORS.length - 1 ? FLOORS[currentIndex + 1].label : 'Next'} →
               </button>
-              {!tenantCompany && !isAdmin && (
+              {tenantCompany && !isAdmin && (
                 <button onClick={() => handleRequestSpot()} className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex items-center gap-2">
                   🅿️ Request a Spot
                 </button>
@@ -502,7 +514,12 @@ export default function PublicFloorPage() {
                           <span className="font-bold text-gray-800">{typeSpots.length}</span>
                         </div>
                         <div className="grid grid-cols-3 gap-1 mt-1 text-center text-[10px]">
-                          {availableCount > 0 && <div className="bg-green-50 text-green-700 rounded px-1 py-0.5"><div>Available</div><div className="font-bold">{availableCount}</div></div>}
+                          {availableCount > 0 && (
+                            <div className={`rounded px-1 py-0.5 ${type.id === 'reserved' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                              <div>{type.id === 'reserved' ? 'Reserved' : 'Available'}</div>
+                              <div className="font-bold">{availableCount}</div>
+                            </div>
+                          )}
                           {companyCount > 0 && <div className="bg-blue-50 text-blue-700 rounded px-1 py-0.5"><div className="flex items-center justify-center gap-0.5"><div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.company.svg }} /><span>Company</span></div><div className="font-bold">{companyCount}</div></div>}
                           {personCount > 0 && <div className="bg-purple-50 text-purple-700 rounded px-1 py-0.5"><div className="flex items-center justify-center gap-0.5"><div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.person.svg }} /><span>Personal</span></div><div className="font-bold">{personCount}</div></div>}
                         </div>
@@ -535,7 +552,11 @@ export default function PublicFloorPage() {
                   <div className="border-t border-gray-200">
                     <div className="p-3 border-b border-gray-200">
                       <h3 className="font-semibold text-gray-800">🏢 Tenant Directory</h3>
-                      <p className="text-gray-500 text-xs mt-1">{companyList.length} companies</p>
+                      <p className="text-gray-500 text-xs mt-1">
+                        {tenantCompany && !isAdmin
+                          ? `${companyList[0]?.[1]?.length || 0} spaces`
+                          : `${companyList.length} companies`}
+                      </p>
                     </div>
                     <div className="max-h-[300px] overflow-y-auto">
                       {companyList.map(([company, companySpots]) => (
@@ -551,14 +572,20 @@ export default function PublicFloorPage() {
                             <div className="px-3 pb-2 space-y-1">
                               {companySpots.map(spot => {
                                 const occupancy = getOccupancyStatus(spot)
+                                const isReservedType = spot.spotTypeConfig?.id === 'reserved'
+                                const statusLabel = spot.parkerName
+                                  ? 'Occupied'
+                                  : isReservedType
+                                    ? 'Reserved'
+                                    : 'Available'
                                 return (
                                   <button key={spot.id} onClick={() => handleDirectorySpotClick(spot)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-left">
                                     <div className="flex items-center gap-2">
                                       <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: spot.spotTypeConfig?.color || '#9ca3af' }} />
                                       <span className="text-xs font-medium text-gray-800">{spot.spotNumber}</span>
                                     </div>
-                                    <span className={`text-xs ${occupancy.type === null ? 'text-green-600' : 'text-blue-600'}`}>
-                                      {spot.parkerName ? 'Occupied' : 'Available'}
+                                    <span className={`text-xs ${spot.parkerName ? 'text-blue-600' : isReservedType ? 'text-red-600' : occupancy.type === null ? 'text-green-600' : 'text-blue-600'}`}>
+                                      {statusLabel}
                                     </span>
                                   </button>
                                 )
@@ -583,7 +610,7 @@ export default function PublicFloorPage() {
                 <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-medium text-gray-900">Spot Details</h3>
-                    <button onClick={() => setSelectedSpot(null)} className="text-sm text-gray-500 hover:text-gray-700">✕ Close</button>
+                    <button onClick={() => { setSelectedSpot(null); setPinnedTooltipSpotId(null) }} className="text-sm text-gray-500 hover:text-gray-700">✕ Close</button>
                   </div>
                   <div className="space-y-4">
                     <div className="p-3 bg-gray-50 rounded-lg">
@@ -593,9 +620,11 @@ export default function PublicFloorPage() {
                         <div className="font-medium text-gray-700">
                           {isAdmin
                             ? getOccupancyStatus(selectedSpot).description
-                            : isOtherCompany(selectedSpot.companyName) ? 'Occupied' : getOccupancyStatus(selectedSpot).description}
+                            : isOtherCompany(selectedSpot.companyName)
+                              ? 'Reserved'
+                              : getOccupancyStatus(selectedSpot).description}
                         </div>
-                        {selectedSpot.parkerName && (
+                        {selectedSpot.parkerName && !isOtherCompany(selectedSpot.companyName) && (
                           <div className="font-medium text-gray-700 mt-1">
                             Parker: {isAdmin ? selectedSpot.parkerName : 'Occupied'}
                           </div>
@@ -661,12 +690,18 @@ export default function PublicFloorPage() {
                             </div>
                           </div>
                           <div className="text-sm font-medium text-gray-900 truncate mb-1">
-                            {occupancy.type === 'company'
-                              ? (isAdmin || !isOtherCompany(spot.companyName) ? spot.companyName : 'Occupied')
-                              : occupancy.type === 'person' ? 'Personal Spot' : 'Available'}
+                            {isOtherCompany(spot.companyName)
+                              ? 'Reserved'
+                              : occupancy.type === 'company'
+                                ? spot.companyName
+                                : occupancy.type === 'person'
+                                  ? 'Personal Spot'
+                                  : spot.spotTypeConfig?.id === 'reserved'
+                                    ? 'Reserved'
+                                    : 'Available'}
                           </div>
                           {spot.spotTypeConfig && <div className="text-xs text-gray-600 mb-1">{spot.spotTypeConfig.name}</div>}
-                          {spot.parkerName && (
+                          {spot.parkerName && !isOtherCompany(spot.companyName) && (
                             <div className="text-xs text-purple-600 truncate">
                               Parker: {isAdmin ? spot.parkerName : 'Occupied'}
                             </div>
@@ -692,6 +727,7 @@ export default function PublicFloorPage() {
         preselectedSpot={requestModalSpot}
         floorId={floorId}
         floorLabel={currentFloor.label}
+        tenantCompany={tenantCompany}
       />
     </div>
   )

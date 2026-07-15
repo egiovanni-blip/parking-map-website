@@ -2,24 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-
-const FLOORS = [
-  { route: 2,  label: 'P3'  },
-  { route: 3,  label: 'P4'  },
-  { route: 4,  label: 'P5'  },
-  { route: 5,  label: 'P6'  },
-  { route: 6,  label: 'P7'  },
-  { route: 7,  label: 'P8'  },
-  { route: 8,  label: 'P9'  },
-  { route: 9,  label: 'P10' },
-  { route: 10, label: 'P11' },
-  { route: 11, label: 'P12' },
-  { route: 12, label: 'P14' },
-  { route: 13, label: 'P15' },
-  { route: 14, label: 'P16' },
-  { route: 15, label: 'P17' },
-  { route: 16, label: 'P18' },
-]
+import { FLOORS } from '@/lib/constants'
 
 function formatUSPhoneInput(value) {
   const digits = value.replace(/\D/g, '').slice(0, 10)
@@ -29,7 +12,7 @@ function formatUSPhoneInput(value) {
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
 }
 
-export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, floorId, floorLabel }) {
+export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, floorId, floorLabel, tenantCompany = null }) {
   const [step, setStep] = useState(1) // 1 = select spot, 2 = fill form
   const [selectedFloorId, setSelectedFloorId] = useState(floorId || '2')
   const [availableSpots, setAvailableSpots] = useState([])
@@ -40,12 +23,15 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
   const [error, setError] = useState('')
   const [phoneError, setPhoneError] = useState('')
 
+  const companyForForm = tenantCompany
+    || (preselectedSpot?.companyName && preselectedSpot.companyName !== 'Unassigned' ? preselectedSpot.companyName : '')
+
   const [form, setForm] = useState({
     requester_name: '',
     requester_role: '',
     requester_phone: '',
     requester_email: '',
-    requester_company: preselectedSpot?.companyName && preselectedSpot.companyName !== 'Unassigned' ? preselectedSpot.companyName : '',
+    requester_company: companyForForm,
     notes: ''
   })
 
@@ -54,20 +40,46 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
     if (preselectedSpot) {
       setSelectedSpot(preselectedSpot)
       setStep(2)
-      if (preselectedSpot.companyName && preselectedSpot.companyName !== 'Unassigned') {
-        setForm(f => ({ ...f, requester_company: preselectedSpot.companyName }))
-      }
+      const company = tenantCompany
+        || (preselectedSpot.companyName && preselectedSpot.companyName !== 'Unassigned' ? preselectedSpot.companyName : '')
+      if (company) setForm(f => ({ ...f, requester_company: company }))
     }
-  }, [preselectedSpot])
+  }, [preselectedSpot, tenantCompany])
+
+  // Prefill company when modal opens for a tenant
+  useEffect(() => {
+    if (isOpen && tenantCompany) {
+      setForm(f => ({ ...f, requester_company: tenantCompany }))
+    }
+  }, [isOpen, tenantCompany])
 
   // Load available spots when floor changes
   useEffect(() => {
     if (!isOpen) return
     loadAvailableSpots(selectedFloorId)
-  }, [selectedFloorId, isOpen])
+  }, [selectedFloorId, isOpen, tenantCompany])
 
   const loadAvailableSpots = async (fId) => {
     setLoadingSpots(true)
+    setAvailableSpots([])
+
+    // Tenants only see open spots assigned to their company (no individual parker yet)
+    if (tenantCompany) {
+      const { data, error } = await supabase
+        .from('parking_spots')
+        .select('*')
+        .eq('floor_id', fId)
+        .ilike('display_label', tenantCompany)
+        .is('custom_label', null)
+        .neq('spot_type', 'reserved')
+        .order('original_label')
+
+      if (!error && data) setAvailableSpots(data)
+      setLoadingSpots(false)
+      return
+    }
+
+    // Non-tenant fallback: unassigned / null-label spots
     const { data, error } = await supabase
       .from('parking_spots')
       .select('*')
@@ -76,7 +88,6 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
       .order('original_label')
 
     if (!error && data) {
-      // Also include spots where display_label is 'Unassigned'
       const { data: unassigned } = await supabase
         .from('parking_spots')
         .select('*')
@@ -148,7 +159,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
     setSubmitted(false)
     setError('')
     setPhoneError('')
-    setForm({ requester_name: '', requester_email: '', requester_company: '', notes: '' })
+    setForm({ requester_name: '', requester_role: '', requester_phone: '', requester_email: '', requester_company: '', notes: '' })
     onClose()
   }
 
@@ -210,7 +221,11 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                     Available Spots {loadingSpots && <span className="text-gray-400">(loading...)</span>}
                   </label>
                   {availableSpots.length === 0 && !loadingSpots ? (
-                    <p className="text-sm text-gray-500 italic">No available spots on this floor.</p>
+                    <p className="text-sm text-gray-500 italic">
+                      {tenantCompany
+                        ? `No available ${tenantCompany} spots on this floor.`
+                        : 'No available spots on this floor.'}
+                    </p>
                   ) : (
                     <select
                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
@@ -331,21 +346,21 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                   </div>
 
                   <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Company / Tenant Name <span className="text-red-500">*</span></label>
-  {selectedSpot?.companyName && selectedSpot.companyName !== 'Unassigned' ? (
-    <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-gray-50">
-      {selectedSpot.companyName}
-    </div>
-  ) : (
-    <input
-      type="text"
-      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-      placeholder="Acme Corp"
-      value={form.requester_company}
-      onChange={(e) => setForm({ ...form, requester_company: e.target.value })}
-    />
-  )}
-</div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Company / Tenant Name <span className="text-red-500">*</span></label>
+                    {tenantCompany || (selectedSpot?.companyName && selectedSpot.companyName !== 'Unassigned') ? (
+                      <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-900 bg-gray-50">
+                        {tenantCompany || selectedSpot.companyName}
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        placeholder="Acme Corp"
+                        value={form.requester_company}
+                        onChange={(e) => setForm({ ...form, requester_company: e.target.value })}
+                      />
+                    )}
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
