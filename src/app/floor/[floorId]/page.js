@@ -456,11 +456,6 @@ export default function PublicFloorPage() {
               <button onClick={goToNextFloor} disabled={currentIndex >= FLOORS.length - 1} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
                 {currentIndex < FLOORS.length - 1 ? FLOORS[currentIndex + 1].label : 'Next'} →
               </button>
-              {tenantCompany && !isAdmin && (
-                <button onClick={() => handleRequestSpot()} className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex items-center gap-2">
-                  🅿️ Request a Spot
-                </button>
-              )}
               <Link href="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-2">
                 ← Back to Home
               </Link>
