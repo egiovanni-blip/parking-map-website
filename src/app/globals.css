@@ -1,29 +1,80 @@
 @import "tailwindcss";
 
+/* ── Vend brand tokens ─────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --vend-black: #111114;
+  --vend-white: #FDFDFD;
+  --vend-mint: #00FFE0;
+  --vend-slate: #4A4A50;
+  --vend-concrete: #D5D3D2;
+  --vend-red: #FF4D4F;
+  --vend-yellow: #FFC24B;
+  --vend-green: #14D5A3;
+  --vend-blue: #3E8BFF;
+
+  --background: var(--vend-white);
+  --foreground: var(--vend-black);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Brand palette as Tailwind colors */
+  --color-vend-black: #111114;
+  --color-vend-white: #FDFDFD;
+  --color-vend-mint: #00FFE0;
+  --color-vend-slate: #4A4A50;
+  --color-vend-concrete: #D5D3D2;
+  --color-vend-red: #FF4D4F;
+  --color-vend-yellow: #FFC24B;
+  --color-vend-green: #14D5A3;
+  --color-vend-blue: #3E8BFF;
+
+  /* Map common UI grays to Vend neutrals (layout-safe; does not touch map spot hex colors) */
+  --color-gray-50: #FDFDFD;
+  --color-gray-100: #F5F4F3;
+  --color-gray-200: #D5D3D2;
+  --color-gray-300: #C4C2C1;
+  --color-gray-400: #8B8B90;
+  --color-gray-500: #4A4A50;
+  --color-gray-600: #3A3A40;
+  --color-gray-700: #2A2A2E;
+  --color-gray-800: #1A1A1E;
+  --color-gray-900: #111114;
+
+  /* Accent remaps for chrome only — map dots use inline hex, unaffected */
+  --color-blue-500: #3E8BFF;
+  --color-blue-600: #3E8BFF;
+  --color-blue-700: #2F6FD1;
+  --color-red-500: #FF4D4F;
+  --color-red-600: #FF4D4F;
+  --color-red-700: #E03E40;
+  --color-green-500: #14D5A3;
+  --color-green-600: #14D5A3;
+  --color-green-700: #0FB089;
+
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-headline: var(--font-space-grotesk), var(--font-manrope), sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 400;
 }
+
+h1, h2, .font-headline {
+  font-family: var(--font-space-grotesk), var(--font-manrope), sans-serif;
+  font-weight: 700;
+}
+
+h3, h4, .font-subhead {
+  font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  font-weight: 800;
+}
+
 .nav-arrow {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -35,32 +86,12 @@ body {
 .nav-arrow:active {
   transform: translateY(0);
 }
+
 /* Parking Space Popup Styles */
 .parking-popup {
   position: fixed;
   inset: 0;
   z-index: 9999;
-}
-
-.popup-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
-}
-
-.popup-content {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  width: 90%;
-  max-width: 400px;
-  overflow: hidden;
-  animation: popupFadeIn 0.2s ease-out;
 }
 
 @keyframes popupFadeIn {
@@ -74,11 +105,10 @@ body {
   }
 }
 
-/* Popup styles - keep as is */
 .popup-header {
   padding: 16px 20px;
-  background: #1e40af;
-  color: white;
+  background: var(--vend-black);
+  color: var(--vend-white);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -87,13 +117,14 @@ body {
 .popup-header h3 {
   margin: 0;
   font-size: 18px;
-  font-weight: 600;
+  font-family: var(--font-space-grotesk), sans-serif;
+  font-weight: 700;
 }
 
 .popup-close {
   background: none;
   border: none;
-  color: white;
+  color: var(--vend-white);
   font-size: 24px;
   cursor: pointer;
   padding: 0;
@@ -106,7 +137,7 @@ body {
 }
 
 .popup-close:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(253, 253, 253, 0.1);
 }
 
 .popup-body {
@@ -116,7 +147,7 @@ body {
 .space-detail {
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--vend-concrete);
 }
 
 .space-detail:last-child {
@@ -127,7 +158,7 @@ body {
 
 .space-detail strong {
   display: block;
-  color: #6b7280;
+  color: var(--vend-slate);
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -136,72 +167,62 @@ body {
 
 .popup-footer {
   padding: 16px 20px;
-  background: #f9fafb;
+  background: #F5F4F3;
   text-align: right;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--vend-concrete);
 }
 
 .popup-ok-btn {
-  background: #1e40af;
-  color: white;
+  background: var(--vend-black);
+  color: var(--vend-white);
   border: none;
   padding: 8px 20px;
   border-radius: 6px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .popup-ok-btn:hover {
-  background: #1e3a8a;
+  background: #2A2A2E;
 }
 
-/* SVG Container - keep as is */
 .svg-container svg {
   max-width: 100%;
   max-height: 100%;
 }
 
-/* Parking space hover effects - UPDATED */
-.parking-spot {  /* Changed from .parking-space to match JS class */
+.parking-spot {
   transition: all 0.2s ease;
   pointer-events: all;
   cursor: pointer;
 }
 
-/* Color-specific styles for our parking spots */
-.cyan-spot {
-  /* Original cyan color #80ffff */
-}
+.cyan-spot {}
+.yellow-spot {}
 
-.yellow-spot {
-  /* Original yellow color #ffff80 */
-}
-
-/* Highlight state for hover/selection */
+/* Hover highlight uses mint — spot type fill colors remain from inline styles */
 .parking-spot.highlighted,
 .parking-spot:hover {
-  fill: rgba(0, 255, 136, 0.7) !important;
-  stroke: #00ff88 !important;
+  fill: rgba(0, 255, 224, 0.55) !important;
+  stroke: #00FFE0 !important;
   stroke-width: 2px !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 2px 4px rgba(17, 17, 20, 0.2));
 }
 
-/* Selected state */
 .parking-spot.selected {
-  fill: rgba(59, 130, 246, 0.7) !important; /* Blue */
-  stroke: #3b82f6 !important;
+  fill: rgba(62, 139, 255, 0.55) !important;
+  stroke: #3E8BFF !important;
   stroke-width: 3px !important;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+  filter: drop-shadow(0 4px 6px rgba(17, 17, 20, 0.25));
 }
 
-/* Popup overlay for modal */
 .popup-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(17, 17, 20, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -209,15 +230,14 @@ body {
 }
 
 .popup-content {
-  background: white;
+  background: var(--vend-white);
   border-radius: 12px;
   width: 90%;
   max-width: 400px;
   overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 20px 25px -5px rgba(17, 17, 20, 0.12), 0 10px 10px -5px rgba(17, 17, 20, 0.06);
 }
 
-/* Status indicator styles */
 .spot-status-indicator {
   display: inline-flex;
   align-items: center;
@@ -229,16 +249,16 @@ body {
 }
 
 .spot-status-available {
-  background: #10b981;
-  color: white;
+  background: var(--vend-green);
+  color: var(--vend-black);
 }
 
 .spot-status-occupied {
-  background: #ef4444;
-  color: white;
+  background: var(--vend-red);
+  color: var(--vend-white);
 }
 
 .spot-status-reserved {
-  background: #f59e0b;
-  color: white;
+  background: var(--vend-yellow);
+  color: var(--vend-black);
 }

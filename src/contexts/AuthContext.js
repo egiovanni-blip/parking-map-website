@@ -76,16 +76,15 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     await supabase.auth.signOut()
-    localStorage.removeItem('supabase-user')
-    localStorage.removeItem('supabase-auth-token')
-    document.cookie = 'tenant_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+    // Also clear tenant session if somehow both are active
+    await fetch('/api/tenant/logout', { method: 'POST' })
     setUser(null)
     setIsTenant(false)
     router.push('/')
   }
 
-  const tenantLogout = () => {
-    document.cookie = 'tenant_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  const tenantLogout = async () => {
+    await fetch('/api/tenant/logout', { method: 'POST' })
     setIsTenant(false)
     router.push('/tenant/login')
   }

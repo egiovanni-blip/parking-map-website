@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
+import { verifyTenantCookie } from '@/lib/tenant-session'
 
-export function middleware(request) {
+export async function middleware(request) {
   const { pathname } = request.nextUrl
 
   const alwaysPublic = [
@@ -10,34 +11,33 @@ export function middleware(request) {
     '/auth/callback',
     '/tenant/login',
     '/tenant/set-password',
-    '/tenant/callback',
-    '/tenant/verify',
     '/api/tenant/login',
     '/api/tenant/session',
     '/api/tenant/resolve',
-    '/api/tenant/verify',
     '/api/tenant/set-password',
+    '/api/tenant/request-otp',
+    '/api/tenant/logout',
+    '/api/spot-requests',
     '/login',
     '/attendant',
   ]
 
   // Home page is public
-  if (pathname === '/') {
-    return NextResponse.next()
-  }
+  if (pathname === '/') return NextResponse.next()
 
   // Always public routes
-  if (alwaysPublic.some(path => pathname.startsWith(path))) {
-    return NextResponse.next()
-  }
+  if (alwaysPublic.some(path => pathname.startsWith(path))) return NextResponse.next()
 
   const allCookies = request.cookies.getAll()
   const hasSupabaseAuth = allCookies.some(c => {
     const name = c.name.toLowerCase()
     return name.startsWith('sb-') || name.includes('supabase')
   })
-  const tenantCookie = request.cookies.get('tenant_session')
-  const hasTenantSession = !!tenantCookie
+
+  // Verify the tenant cookie signature — rejects forged cookies
+  const rawTenantCookie = request.cookies.get('tenant_session')?.value ?? null
+  const tenant = await verifyTenantCookie(rawTenantCookie)
+  const hasTenantSession = !!tenant
 
   // Admin routes — require Supabase auth
   if (pathname.startsWith('/admin')) {
@@ -50,44 +50,21 @@ export function middleware(request) {
   if (pathname.startsWith('/floor')) {
     if (hasSupabaseAuth) return NextResponse.next()
     if (hasTenantSession) {
-      try {
-        const tenant = JSON.parse(decodeURIComponent(tenantCookie.value))
-        if (!tenant?.company_name) {
-          return NextResponse.redirect(new URL('/tenant/login', request.url))
-        }
-        const response = NextResponse.next()
-        response.headers.set('x-tenant-company', tenant.company_name)
-        return response
-      } catch {
-        return NextResponse.redirect(new URL('/tenant/login', request.url))
-      }
+      const response = NextResponse.next()
+      response.headers.set('x-tenant-company', tenant.company_name)
+      return response
     }
-    // Not logged in — redirect to tenant login
-    return NextResponse.redirect(new URL('/tenant/login', request.url))
+    return NextResponse.redirect(new URL('/tenant/login?reason=expired', request.url))
   }
 
   // All other protected routes
   if (hasSupabaseAuth) return NextResponse.next()
-
-  if (!hasTenantSession) {
-    return NextResponse.redirect(new URL('/tenant/login', request.url))
-  }
-
-  try {
-    const tenant = JSON.parse(decodeURIComponent(tenantCookie.value))
-    if (!tenant?.company_name) {
-      return NextResponse.redirect(new URL('/tenant/login', request.url))
-    }
-    const response = NextResponse.next()
-    response.headers.set('x-tenant-company', tenant.company_name)
-    return response
-  } catch {
-    return NextResponse.redirect(new URL('/tenant/login', request.url))
-  }
+  if (hasTenantSession) return NextResponse.next()
+  return NextResponse.redirect(new URL('/tenant/login?reason=expired', request.url))
 }
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|overlays|maps|.*\\..*).*)' 
+    '/((?!_next/static|_next/image|favicon.ico|overlays|maps|.*\\..*).*)'
   ]
 }

@@ -30,7 +30,7 @@ export async function PATCH(request, { params }) {
 
     if (updateError) return Response.json({ error: updateError.message }, { status: 500 })
 
-    // 3. If approved → update the actual parking spot
+    // 3. If approved → update the actual parking spot matched by its unique identifier
     if (status === 'approved') {
       const { error: spotError } = await supabase
         .from('parking_spots')
@@ -41,8 +41,7 @@ export async function PATCH(request, { params }) {
           is_custom_labeled: true,
           updated_at: new Date().toISOString()
         })
-        .eq('floor_id', requestData.floor_id)
-        .eq('original_label', requestData.spot_number)
+        .eq('id', requestData.spot_identifier)
 
       if (spotError) return Response.json({ error: spotError.message }, { status: 500 })
     }

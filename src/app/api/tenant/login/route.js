@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
 import { cookies } from 'next/headers'
+import { signTenantCookie } from '@/lib/tenant-session'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -23,21 +24,16 @@ export async function POST(request) {
       .eq('is_active', true)
       .single()
 
-    if (tenantError || !tenant) {
-      return Response.json({ error: 'Email not found. Please contact your property manager.' }, { status: 404 })
-    }
+    const authFailed = () =>
+      Response.json({ error: 'Incorrect email or password. Please try again.' }, { status: 401 })
 
-    if (!tenant.password_hash) {
-      return Response.json({ error: 'No password set for this account. Please set your password first.' }, { status: 401 })
-    }
+    if (tenantError || !tenant) return authFailed()
+    if (!tenant.password_hash) return authFailed()
 
     const valid = await bcrypt.compare(password, tenant.password_hash)
-    if (!valid) {
-      return Response.json({ error: 'Incorrect password. Please try again.' }, { status: 401 })
-    }
+    if (!valid) return authFailed()
 
-    // Store as plain JSON string — no manual encoding, cookies() handles it
-    const cookieValue = JSON.stringify({
+    const cookieValue = await signTenantCookie({
       email: tenant.email,
       company_name: tenant.company_name
     })
@@ -46,6 +42,7 @@ export async function POST(request) {
     cookieStore.set('tenant_session', cookieValue, {
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax'
     })

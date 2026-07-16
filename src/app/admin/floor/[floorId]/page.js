@@ -5,36 +5,16 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { FLOORS } from '@/lib/constants'
 
-// Floor route → display label mapping (same as admin dashboard & home page)
-const FLOORS = [
-  { route: 2,  label: 'P3'  },
-  { route: 3,  label: 'P4'  },
-  { route: 4,  label: 'P5'  },
-  { route: 5,  label: 'P6'  },
-  { route: 6,  label: 'P7'  },
-  { route: 7,  label: 'P8'  },
-  { route: 8,  label: 'P9'  },
-  { route: 9,  label: 'P10' },
-  { route: 10, label: 'P11' },
-  { route: 11, label: 'P12' },
-  // route 12 skipped — P13 doesn't exist
-  { route: 12, label: 'P14' },
-  { route: 13, label: 'P15' },
-  { route: 14, label: 'P16' },
-  { route: 15, label: 'P17' },
-  { route: 16, label: 'P18' },
-  { route: 17, label: 'P18' },
-]
-
-// Spot type configurations - only used for unoccupied borders
+// Spot type configurations used for border color display
 const SPOT_TYPES = [
   { id: 'regular', name: 'Regular', color: '#fbbf24', icon: '🚗', description: 'Standard parking spot' },
   { id: 'reserved', name: 'Reserved', color: '#ef4444', icon: '⭐', description: 'Reserved parking' },
   { id: 'compact', name: 'Compact', color: '#a855f7', icon: '🅿️', description: 'Compact car spot' },
   { id: 'ev', name: 'EV', color: '#10b981', icon: '🔋', description: 'Electric vehicle charging' },
   { id: 'ada', name: 'ADA', color: '#3b82f6', icon: '♿', description: 'Handicap accessible' },
-  { id: 'ada_ev', name: 'ADA + EV', color: '#1e40af', icon: '♿🔌', description: 'Handicap with EV charging' }
+  { id: 'ada_ev', name: 'ADA + EV', color: '#1e40af', icon: '♿🔌', description: 'Handicap with EV charging' },
 ];
 
 export default function AdminFloorPage() {

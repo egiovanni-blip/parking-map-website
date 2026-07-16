@@ -118,6 +118,7 @@ export default function RequestsAdminPage() {
                     <div>
                       <span className="text-gray-500">Name: </span>
                       <span className="font-medium text-gray-900">{req.requester_name}</span>
+                      {req.requester_role && <span className="text-gray-400 text-xs ml-1">({req.requester_role})</span>}
                     </div>
                     <div>
                       <span className="text-gray-500">Company: </span>
@@ -129,6 +130,14 @@ export default function RequestsAdminPage() {
                         {req.requester_email}
                       </a>
                     </div>
+                    {req.requester_phone && (
+                      <div>
+                        <span className="text-gray-500">Phone: </span>
+                        <a href={`tel:${req.requester_phone}`} className="font-medium text-gray-900 hover:underline">
+                          {req.requester_phone}
+                        </a>
+                      </div>
+                    )}
                   </div>
 
                   {req.notes && (

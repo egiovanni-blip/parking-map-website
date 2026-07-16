@@ -16,6 +16,7 @@ function TenantLoginForm() {
   const router = useRouter()
   const { refreshTenantStatus } = useAuth()
   const errorParam = searchParams.get('error')
+  const reasonParam = searchParams.get('reason')
 
   const handleSubmit = async () => {
     if (!email) return setError('Please enter your email.')
@@ -45,6 +46,11 @@ function TenantLoginForm() {
       {errorParam === 'invalid' && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm mb-4">
           Invalid session. Please log in again.
+        </div>
+      )}
+      {reasonParam === 'expired' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3 text-sm mb-4">
+          Your session has expired. Please sign in again.
         </div>
       )}
 
@@ -120,9 +126,9 @@ export default function TenantLoginPage() {
     <AuthPageBackdrop>
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-          <div className="bg-gray-900 px-6 py-5">
-            <h1 className="text-white font-bold text-xl">🅿️ Parking Map Access</h1>
-            <p className="text-gray-400 text-sm mt-1">Sign in to view your parking spaces</p>
+          <div className="bg-vend-black px-6 py-5">
+            <h1 className="text-vend-white font-headline text-xl tracking-tight">Parking Map Access</h1>
+            <p className="text-vend-concrete text-sm mt-1 font-subhead">Sign in. See your spaces.</p>
           </div>
           <Suspense fallback={<div className="p-6 text-center text-gray-500">Loading...</div>}>
             <TenantLoginForm />

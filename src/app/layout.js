@@ -1,20 +1,32 @@
-import { Inter } from 'next/font/google'
+import { Space_Grotesk, Manrope } from 'next/font/google'
 import Header from '../components/Header/Header'
 import Footer from '../components/Footer/Footer'
 import { AuthProvider } from '@/contexts/AuthContext'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['700'],
+  variable: '--font-space-grotesk',
+  display: 'swap',
+})
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['400', '600', '800'],
+  variable: '--font-manrope',
+  display: 'swap',
+})
 
 export const metadata = {
-  title: 'Parking Garage Interactive Map',
-  description: 'Interactive parking space map with real-time availability',
+  title: 'The Republic | Parking Map',
+  description: 'Find and request parking spaces — fast, clear, and effortless.',
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full flex flex-col`}>
+    <html lang="en" className={`h-full ${spaceGrotesk.variable} ${manrope.variable}`}>
+      <body className={`${manrope.className} h-full flex flex-col`}>
         <AuthProvider>
           <Header />
           <main className="flex-grow">

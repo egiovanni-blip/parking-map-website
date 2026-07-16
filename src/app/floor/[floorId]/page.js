@@ -305,6 +305,7 @@ export default function PublicFloorPage() {
     setPinnedTooltipSpotId(spot.id)
   }
   const handleRequestSpot = (spot = null) => {
+    setPinnedTooltipSpotId(null)
     setRequestModalSpot(spot)
     setShowRequestModal(true)
   }
@@ -435,8 +436,8 @@ export default function PublicFloorPage() {
         <div className="mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{currentFloor.label} - Parking Spaces</h1>
-              <p className="text-gray-600 mt-1">View parking spots. Click on any spot for details.</p>
+              <h1 className="text-2xl font-headline text-vend-black tracking-tight">{currentFloor.label} — Parking Spaces</h1>
+              <p className="text-vend-slate mt-1">Click a space for details. Request when it&apos;s available.</p>
               {!loading && !error && (
                 <div className="flex items-center gap-4 mt-2 text-sm">
                   <div className="flex items-center gap-2">
@@ -485,236 +486,159 @@ export default function PublicFloorPage() {
               )}
             </div>
 
-            {/* Legend */}
-            <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 max-w-[280px] border border-gray-200">
-              <div className="p-3 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
-                <p className="text-gray-500 text-xs mt-1">Total: {spots.length} spaces</p>
-              </div>
-              <div className="p-3 max-h-[400px] overflow-y-auto">
-                <div className="space-y-3">
-                  {SPOT_TYPES.map(type => {
-                    const typeSpots = spots.filter(s => s.spotTypeConfig?.id === type.id)
-                    if (typeSpots.length === 0) return null
-                    const availableCount = typeSpots.filter(s => getOccupancyStatus(s).type === null).length
-                    const companyCount = typeSpots.filter(s => getOccupancyStatus(s).type === 'company').length
-                    const personCount = typeSpots.filter(s => getOccupancyStatus(s).type === 'person').length
-                    return (
-                      <div key={type.id} className="border-l-2 pl-2" style={{ borderLeftColor: type.color }}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: type.color }}></div>
-                            <span className="font-medium text-gray-700">{type.name}</span>
-                          </div>
-                          <span className="font-bold text-gray-800">{typeSpots.length}</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-1 mt-1 text-center text-[10px]">
-                          {availableCount > 0 && (
-                            <div className={`rounded px-1 py-0.5 ${type.id === 'reserved' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
-                              <div>{type.id === 'reserved' ? 'Reserved' : 'Available'}</div>
-                              <div className="font-bold">{availableCount}</div>
-                            </div>
-                          )}
-                          {companyCount > 0 && <div className="bg-blue-50 text-blue-700 rounded px-1 py-0.5"><div className="flex items-center justify-center gap-0.5"><div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.company.svg }} /><span>Company</span></div><div className="font-bold">{companyCount}</div></div>}
-                          {personCount > 0 && <div className="bg-purple-50 text-purple-700 rounded px-1 py-0.5"><div className="flex items-center justify-center gap-0.5"><div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.person.svg }} /><span>Personal</span></div><div className="font-bold">{personCount}</div></div>}
-                        </div>
-                      </div>
-                    )
-                  })}
+            {/* Side panel overlaid on map — keeps map width so dots stay aligned */}
+            {!loading && !error && (
+              <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 w-[280px] max-h-[calc(900px-1rem)] border border-gray-400 flex flex-col overflow-hidden">
+                <div className="p-3 border-b border-gray-400 flex-shrink-0">
+                  <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
+                  <p className="text-gray-500 text-xs mt-1">Total: {spots.length} spaces</p>
                 </div>
-              </div>
 
-              {/* Tenant Directory */}
-              {(() => {
-                const companies = {}
-                spots.forEach(spot => {
-                  const company = spot.companyName
-                  if (company && !isUnassignedSpot(company)) {
-                    if (tenantCompany && !companiesMatchCI(company, tenantCompany)) return
-                    if (!companies[company]) companies[company] = []
-                    companies[company].push(spot)
-                  }
-                })
-                let companyEntries = Object.entries(companies)
-                if (tenantCompany && !isAdmin) {
-                  companyEntries = companyEntries.filter(([company]) =>
-                    companiesMatchCI(company, tenantCompany)
-                  )
-                }
-                const companyList = companyEntries.sort((a, b) => a[0].localeCompare(b[0]))
-                if (companyList.length === 0) return null
-                return (
-                  <div className="border-t border-gray-200">
-                    <div className="p-3 border-b border-gray-200">
-                      <h3 className="font-semibold text-gray-800">🏢 Tenant Directory</h3>
-                      <p className="text-gray-500 text-xs mt-1">
-                        {tenantCompany && !isAdmin
-                          ? `${companyList[0]?.[1]?.length || 0} spaces`
-                          : `${companyList.length} companies`}
-                      </p>
-                    </div>
-                    <div className="max-h-[300px] overflow-y-auto">
-                      {companyList.map(([company, companySpots]) => (
-                        <div key={company} className="border-b border-gray-100 last:border-0">
-                          <button className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors text-left" onClick={() => setExpandedCompany(expandedCompany === company ? null : company)}>
-                            <span className="font-medium text-gray-700 text-xs truncate">{company}</span>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">{companySpots.length}</span>
-                              <span className="text-gray-400 text-xs">{expandedCompany === company ? '▲' : '▼'}</span>
-                            </div>
-                          </button>
-                          {expandedCompany === company && (
-                            <div className="px-3 pb-2 space-y-1">
-                              {companySpots.map(spot => {
-                                const occupancy = getOccupancyStatus(spot)
-                                const isReservedType = spot.spotTypeConfig?.id === 'reserved'
-                                const statusLabel = spot.parkerName
-                                  ? 'Occupied'
-                                  : isReservedType
-                                    ? 'Reserved'
-                                    : 'Available'
-                                return (
-                                  <button key={spot.id} onClick={() => handleDirectorySpotClick(spot)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-left">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: spot.spotTypeConfig?.color || '#9ca3af' }} />
-                                      <span className="text-xs font-medium text-gray-800">{spot.spotNumber}</span>
-                                    </div>
-                                    <span className={`text-xs ${spot.parkerName ? 'text-blue-600' : isReservedType ? 'text-red-600' : occupancy.type === null ? 'text-green-600' : 'text-blue-600'}`}>
-                                      {statusLabel}
-                                    </span>
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
-          </div>
-        </div>
-
-        {/* Selected Spot Panel & Spot List */}
-        {!loading && !error && (
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              {selectedSpot ? (
-                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium text-gray-900">Spot Details</h3>
-                    <button onClick={() => { setSelectedSpot(null); setPinnedTooltipSpotId(null) }} className="text-sm text-gray-500 hover:text-gray-700">✕ Close</button>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="text-2xl font-bold text-gray-900 mb-3">{selectedSpot.spotNumber}</div>
-                      <div className="mb-3">
-                        <div className="text-sm text-gray-500">Status</div>
-                        <div className="font-medium text-gray-700">
-                          {isAdmin
-                            ? getOccupancyStatus(selectedSpot).description
-                            : isOtherCompany(selectedSpot.companyName)
-                              ? 'Reserved'
-                              : getOccupancyStatus(selectedSpot).description}
-                        </div>
-                        {selectedSpot.parkerName && !isOtherCompany(selectedSpot.companyName) && (
-                          <div className="font-medium text-gray-700 mt-1">
-                            Parker: {isAdmin ? selectedSpot.parkerName : 'Occupied'}
-                          </div>
-                        )}
-                      </div>
-                      {selectedSpot.spotTypeConfig && (
-                        <div className="mb-3">
-                          <div className="text-sm text-gray-500">Spot Type</div>
-                          <div className="font-medium" style={{ color: selectedSpot.spotTypeConfig.color }}>{selectedSpot.spotTypeConfig.name}</div>
-                        </div>
-                      )}
-                    </div>
-                    {!isAdmin && canRequestSpot(selectedSpot) && companiesMatchCI(selectedSpot.companyName, tenantCompany) && (
-                      <button onClick={() => handleRequestSpot(selectedSpot)} className="mt-4 w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm">
-                        Request This Spot
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                  <div className="text-gray-400 mb-2">👆</div>
-                  <p className="text-sm text-gray-600">Click on any colored dot to view spot details</p>
-                </div>
-              )}
-            </div>
-
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-gray-900">Parking Spots ({spots.length})</h3>
-                  <div className="text-sm text-gray-500">
-                    <span className="text-green-600">{spots.filter(s => getOccupancyStatus(s).type === null).length} available</span>
-                    {' • '}
-                    <span className="text-blue-600">{spots.filter(s => getOccupancyStatus(s).type === 'company').length} company</span>
-                    {' • '}
-                    <span className="text-purple-600">{spots.filter(s => getOccupancyStatus(s).type === 'person').length} personal</span>
-                  </div>
-                </div>
-                {spots.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-1">
-                    {spots.map((spot) => {
-                      const occupancy = getOccupancyStatus(spot)
-                      const isAvailable = occupancy.type === null
-                      const spotTypeConfig = spot.spotTypeConfig || SPOT_TYPES[0]
+                <div className="overflow-y-auto flex-1 min-h-0">
+                  <div className="p-3 space-y-3">
+                    {SPOT_TYPES.map(type => {
+                      const typeSpots = spots.filter(s => s.spotTypeConfig?.id === type.id)
+                      if (typeSpots.length === 0) return null
+                      const availableCount = typeSpots.filter(s => getOccupancyStatus(s).type === null).length
+                      const companyCount = typeSpots.filter(s => getOccupancyStatus(s).type === 'company').length
+                      const personCount = typeSpots.filter(s => getOccupancyStatus(s).type === 'person').length
                       return (
-                        <div
-                          key={spot.id}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedSpot?.id === spot.id ? 'ring-2 ring-blue-500 border-blue-300 bg-blue-50' : isAvailable ? 'border-green-300 bg-green-50/30' : occupancy.type === 'company' ? 'border-blue-300 bg-blue-50/30' : 'border-purple-300 bg-purple-50/30'}`}
-                          style={{ borderLeftColor: spotTypeConfig.color, borderLeftWidth: '4px' }}
-                          onClick={() => handleSpotClick(spot)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
+                        <div key={type.id} className="border-l-2 pl-2" style={{ borderLeftColor: type.color }}>
+                          <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                              <div className="relative w-4 h-4">
-                                <div className="w-full h-full rounded-full" style={{ backgroundColor: spotTypeConfig.color }}>
-                                  {occupancy.icon && (
-                                    <div className="absolute inset-0 flex items-center justify-center" style={{ width: '100%', height: '100%', color: 'white', padding: '2px' }} dangerouslySetInnerHTML={{ __html: occupancy.icon.svg }} />
-                                  )}
-                                </div>
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: type.color }}></div>
+                              <span className="font-medium text-gray-700">{type.name}</span>
+                            </div>
+                            <span className="font-bold text-gray-800">{typeSpots.length}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 mt-1 text-center text-[10px]">
+                            {availableCount > 0 && (
+                              <div className={`rounded px-1 py-0.5 ${type.id === 'reserved' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                                <div>{type.id === 'reserved' ? 'Reserved' : 'Available'}</div>
+                                <div className="font-bold">{availableCount}</div>
                               </div>
-                              <span className={`text-lg font-bold ${isAvailable ? 'text-green-700' : occupancy.type === 'company' ? 'text-blue-700' : 'text-purple-700'}`}>{spot.spotNumber}</span>
-                            </div>
+                            )}
+                            {companyCount > 0 && <div className="bg-blue-50 text-blue-700 rounded px-1 py-0.5"><div className="flex items-center justify-center gap-0.5"><div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.company.svg }} /><span>Company</span></div><div className="font-bold">{companyCount}</div></div>}
+                            {personCount > 0 && <div className="bg-purple-50 text-purple-700 rounded px-1 py-0.5"><div className="flex items-center justify-center gap-0.5"><div className="w-2.5 h-2.5" dangerouslySetInnerHTML={{ __html: OCCUPANCY_ICONS.person.svg }} /><span>Personal</span></div><div className="font-bold">{personCount}</div></div>}
                           </div>
-                          <div className="text-sm font-medium text-gray-900 truncate mb-1">
-                            {isOtherCompany(spot.companyName)
-                              ? 'Reserved'
-                              : occupancy.type === 'company'
-                                ? spot.companyName
-                                : occupancy.type === 'person'
-                                  ? 'Personal Spot'
-                                  : spot.spotTypeConfig?.id === 'reserved'
-                                    ? 'Reserved'
-                                    : 'Available'}
-                          </div>
-                          {spot.spotTypeConfig && <div className="text-xs text-gray-600 mb-1">{spot.spotTypeConfig.name}</div>}
-                          {spot.parkerName && !isOtherCompany(spot.companyName) && (
-                            <div className="text-xs text-purple-600 truncate">
-                              Parker: {isAdmin ? spot.parkerName : 'Occupied'}
-                            </div>
-                          )}
                         </div>
                       )
                     })}
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="mb-4">🚗</div>
-                    <p>No parking spots available for this floor</p>
-                  </div>
-                )}
+
+                  {/* Tenant Directory */}
+                  {(() => {
+                    const companies = {}
+                    spots.forEach(spot => {
+                      const company = spot.companyName
+                      if (company && !isUnassignedSpot(company)) {
+                        if (tenantCompany && !companiesMatchCI(company, tenantCompany)) return
+                        if (!companies[company]) companies[company] = []
+                        companies[company].push(spot)
+                      }
+                    })
+                    let companyEntries = Object.entries(companies)
+                    if (tenantCompany && !isAdmin) {
+                      companyEntries = companyEntries.filter(([company]) =>
+                        companiesMatchCI(company, tenantCompany)
+                      )
+                    }
+                    const companyList = companyEntries.sort((a, b) => a[0].localeCompare(b[0]))
+                    if (companyList.length === 0) return null
+                    return (
+                      <div className="border-t border-gray-400">
+                        <div className="p-3 border-b border-gray-400">
+                          <h3 className="font-semibold text-gray-800">🏢 Tenant Directory</h3>
+                          <p className="text-gray-500 text-xs mt-1">
+                            {tenantCompany && !isAdmin
+                              ? `${companyList[0]?.[1]?.length || 0} spaces`
+                              : `${companyList.length} companies`}
+                          </p>
+                        </div>
+                        <div>
+                          {companyList.map(([company, companySpots]) => (
+                            <div key={company} className="border-b border-gray-100 last:border-0">
+                              <button className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-50 transition-colors text-left" onClick={() => setExpandedCompany(expandedCompany === company ? null : company)}>
+                                <span className="font-medium text-gray-700 text-xs truncate">{company}</span>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-xs bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full">{companySpots.length}</span>
+                                  <span className="text-gray-400 text-xs">{expandedCompany === company ? '▲' : '▼'}</span>
+                                </div>
+                              </button>
+                              {expandedCompany === company && (
+                                <div className="px-3 pb-2 space-y-1">
+                                  {companySpots.map(spot => {
+                                    const occupancy = getOccupancyStatus(spot)
+                                    const isReservedType = spot.spotTypeConfig?.id === 'reserved'
+                                    const statusLabel = spot.parkerName
+                                      ? 'Occupied'
+                                      : isReservedType
+                                        ? 'Reserved'
+                                        : 'Available'
+                                    return (
+                                      <button key={spot.id} onClick={() => handleDirectorySpotClick(spot)} className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors text-left">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: spot.spotTypeConfig?.color || '#9ca3af' }} />
+                                          <span className="text-xs font-medium text-gray-800">{spot.spotNumber}</span>
+                                        </div>
+                                        <span className={`text-xs ${spot.parkerName ? 'text-blue-600' : isReservedType ? 'text-red-600' : occupancy.type === null ? 'text-green-600' : 'text-blue-600'}`}>
+                                          {statusLabel}
+                                        </span>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Spot Details — in scroll flow under directory, not overlaid */}
+                  {selectedSpot && (
+                    <div className="border-t border-gray-400 p-3 bg-gray-50">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold text-gray-800">Spot Details</h3>
+                        <button onClick={() => { setSelectedSpot(null); setPinnedTooltipSpotId(null) }} className="text-xs text-gray-500 hover:text-gray-700">✕ Close</button>
+                      </div>
+                      <div className="bg-white rounded-lg border border-gray-400 p-3">
+                        <div className="text-xl font-bold text-gray-900 mb-2">{selectedSpot.spotNumber}</div>
+                        <div className="mb-2">
+                          <div className="text-[10px] uppercase tracking-wide text-gray-500">Status</div>
+                          <div className="font-medium text-gray-700 text-sm">
+                            {isAdmin
+                              ? getOccupancyStatus(selectedSpot).description
+                              : isOtherCompany(selectedSpot.companyName)
+                                ? 'Reserved'
+                                : getOccupancyStatus(selectedSpot).description}
+                          </div>
+                          {selectedSpot.parkerName && !isOtherCompany(selectedSpot.companyName) && (
+                            <div className="font-medium text-gray-700 text-sm mt-1">
+                              Parker: {isAdmin ? selectedSpot.parkerName : 'Occupied'}
+                            </div>
+                          )}
+                        </div>
+                        {selectedSpot.spotTypeConfig && (
+                          <div className="mb-2">
+                            <div className="text-[10px] uppercase tracking-wide text-gray-500">Spot Type</div>
+                            <div className="font-medium text-sm" style={{ color: selectedSpot.spotTypeConfig.color }}>{selectedSpot.spotTypeConfig.name}</div>
+                          </div>
+                        )}
+                        {!isAdmin && canRequestSpot(selectedSpot) && companiesMatchCI(selectedSpot.companyName, tenantCompany) && (
+                          <button onClick={() => handleRequestSpot(selectedSpot)} className="mt-2 w-full px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-xs font-medium">
+                            Request This Spot
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
       <SpotRequestModal
         isOpen={showRequestModal}

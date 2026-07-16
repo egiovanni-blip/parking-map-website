@@ -174,9 +174,9 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
       <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
 
         {/* Header */}
-        <div className="bg-gray-900 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-white font-bold text-lg">🅿️ Request a Parking Spot</h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-white transition-colors text-xl">✕</button>
+                <div className="bg-vend-black px-6 py-4 flex items-center justify-between">
+          <h2 className="text-vend-white font-headline text-lg tracking-tight">Request a Parking Spot</h2>
+          <button onClick={handleClose} className="text-vend-concrete hover:text-vend-white transition-colors text-xl">✕</button>
         </div>
 
         {/* Success State */}

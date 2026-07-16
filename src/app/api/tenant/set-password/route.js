@@ -10,30 +10,45 @@ export async function POST(request) {
   try {
     const body = await request.json()
     const email = body.email?.toLowerCase().trim()
+    const otp = body.otp?.trim()
     const password = body.password
 
     if (!email) return Response.json({ error: 'Email is required.' }, { status: 400 })
+    if (!otp) return Response.json({ error: 'Verification code is required.' }, { status: 400 })
     if (!password) return Response.json({ error: 'Password is required.' }, { status: 400 })
     if (password.length < 8) return Response.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
 
-    // Verify email exists in tenant_contacts
     const { data: tenant, error: tenantError } = await supabase
       .from('tenant_contacts')
-      .select('id, email')
+      .select('id, otp_hash, otp_expires_at')
       .eq('email', email)
       .eq('is_active', true)
-      .single()
+      .maybeSingle()
 
     if (tenantError || !tenant) {
-      return Response.json({ error: 'Email not found. Please contact your property manager.' }, { status: 404 })
+      return Response.json({ error: 'Invalid or expired verification code.' }, { status: 400 })
     }
 
-    // Hash and save password
+    // Verify OTP exists and hasn't expired
+    if (!tenant.otp_hash || !tenant.otp_expires_at) {
+      return Response.json({ error: 'No verification code found. Please request a new one.' }, { status: 400 })
+    }
+
+    if (new Date(tenant.otp_expires_at) < new Date()) {
+      return Response.json({ error: 'Verification code has expired. Please request a new one.' }, { status: 400 })
+    }
+
+    const otpValid = await bcrypt.compare(otp, tenant.otp_hash)
+    if (!otpValid) {
+      return Response.json({ error: 'Incorrect verification code.' }, { status: 400 })
+    }
+
+    // OTP verified — hash new password and clear the OTP in one update
     const password_hash = await bcrypt.hash(password, 12)
 
     const { error: updateError } = await supabase
       .from('tenant_contacts')
-      .update({ password_hash })
+      .update({ password_hash, otp_hash: null, otp_expires_at: null })
       .eq('id', tenant.id)
 
     if (updateError) {

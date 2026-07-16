@@ -23,42 +23,37 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow">
+    <header className="bg-vend-white border-b border-vend-concrete">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
 
-          {/* Left side: Logo and Navigation */}
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Link href="/" className="text-lg font-bold text-blue-600 hover:text-blue-700">
+              <Link href="/" className="font-headline text-lg text-vend-black hover:text-vend-slate tracking-tight">
                 The Republic
               </Link>
             </div>
 
-            {/* Desktop Navigation */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-
-              {/* Home — always visible */}
               <a
                 href="/"
                 onClick={handleHomeClick}
-                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer ${
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold cursor-pointer ${
                   isHomePage || isFloorPage
-                    ? 'border-blue-500 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-vend-mint text-vend-black'
+                    : 'border-transparent text-vend-slate hover:text-vend-black hover:border-vend-concrete'
                 }`}
               >
                 Home
               </a>
 
-              {/* Admin link — only for admin */}
               {user && !isTenant && (
                 <Link
                   href="/admin"
-                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold ${
                     isAdminPage
-                      ? 'border-blue-500 text-gray-900'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-vend-mint text-vend-black'
+                      : 'border-transparent text-vend-slate hover:text-vend-black hover:border-vend-concrete'
                   }`}
                 >
                   Admin
@@ -67,21 +62,20 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Right side */}
           <div className="flex items-center">
             {loading ? (
-              <div className="text-sm text-gray-500">Loading...</div>
+              <div className="text-sm text-vend-slate">Loading...</div>
             ) : user ? (
               <button
                 onClick={logout}
-                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                className="ml-3 inline-flex items-center px-4 py-2 text-sm font-semibold rounded-md text-vend-white bg-vend-black hover:bg-vend-slate transition-colors"
               >
                 Logout
               </button>
             ) : isTenant ? (
               <button
                 onClick={tenantLogout}
-                className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                className="ml-3 inline-flex items-center px-4 py-2 text-sm font-semibold rounded-md text-vend-white bg-vend-black hover:bg-vend-slate transition-colors"
               >
                 Logout
               </button>
@@ -90,15 +84,14 @@ export default function Header() {
 
         </div>
 
-        {/* Mobile Navigation */}
-        <div className="sm:hidden border-t border-gray-200 mt-2 pt-2">
+        <div className="sm:hidden border-t border-vend-concrete mt-2 pt-2">
           <div className="flex space-x-4">
             <a
               href="/"
               onClick={handleHomeClick}
-              className={`flex-1 text-center pb-2 cursor-pointer ${isHomePage || isFloorPage ? 'border-b-2 border-blue-500' : ''}`}
+              className={`flex-1 text-center pb-2 cursor-pointer ${isHomePage || isFloorPage ? 'border-b-2 border-vend-mint' : ''}`}
             >
-              <span className={`text-sm font-medium ${isHomePage || isFloorPage ? 'text-gray-900' : 'text-gray-500'}`}>
+              <span className={`text-sm font-semibold ${isHomePage || isFloorPage ? 'text-vend-black' : 'text-vend-slate'}`}>
                 Home
               </span>
             </a>
@@ -106,9 +99,9 @@ export default function Header() {
             {user && !isTenant && (
               <Link
                 href="/admin"
-                className={`flex-1 text-center pb-2 ${isAdminPage ? 'border-b-2 border-blue-500' : ''}`}
+                className={`flex-1 text-center pb-2 ${isAdminPage ? 'border-b-2 border-vend-mint' : ''}`}
               >
-                <span className={`text-sm font-medium ${isAdminPage ? 'text-gray-900' : 'text-gray-500'}`}>
+                <span className={`text-sm font-semibold ${isAdminPage ? 'text-vend-black' : 'text-vend-slate'}`}>
                   Admin
                 </span>
               </Link>
