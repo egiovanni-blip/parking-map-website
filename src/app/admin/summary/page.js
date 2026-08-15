@@ -110,6 +110,23 @@ function telHref(phone) {
   return null
 }
 
+function smsHref(phone, body) {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length < 7 || !String(body || '').trim()) return null
+  const number = digits.length === 10
+    ? `+1${digits}`
+    : digits.length === 11 && digits.startsWith('1')
+      ? `+${digits}`
+      : digits
+  const encoded = encodeURIComponent(String(body).trim())
+  const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent)
+  return isIOS ? `sms:${number}&body=${encoded}` : `sms:${number}?body=${encoded}`
+}
+
+function reservedSpaceTextTemplate(spaceCode) {
+  return `Hello from the Republic team. Your vehicle is currently parked in a reserved space ${spaceCode}. Please move your vehicle to unreserved parking spot as soon as possible. Thank you for your cooperation`
+}
+
 function PhoneLink({ phone, className = '' }) {
   const display = formatPhoneDisplay(phone)
   if (!display) return <span className={className}>—</span>
@@ -216,6 +233,8 @@ export default function AllocationSummaryPage() {
   const [expandedTenant, setExpandedTenant] = useState(null)
   const [tab, setTab] = useState('summary')
   const [query, setQuery] = useState('')
+  const [textingKey, setTextingKey] = useState(null)
+  const [textMessage, setTextMessage] = useState('')
   const searchInputRef = useRef(null)
 
   useEffect(() => {
@@ -227,6 +246,11 @@ export default function AllocationSummaryPage() {
     const timer = setTimeout(() => searchInputRef.current?.focus(), 50)
     return () => clearTimeout(timer)
   }, [tab])
+
+  useEffect(() => {
+    setTextingKey(null)
+    setTextMessage('')
+  }, [query, tab])
 
   const loadSummary = async () => {
     setLoading(true)
@@ -419,8 +443,12 @@ export default function AllocationSummaryPage() {
             </div>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {searchResults.map((spot, idx) => (
-                <li key={`${spot.floorId}-${spot.spaceCode}-${idx}`} className="px-4 py-4">
+              {searchResults.map((spot, idx) => {
+                const resultKey = `${spot.floorId}-${spot.spaceCode}-${idx}`
+                const isTexting = textingKey === resultKey
+                const sendHref = isTexting ? smsHref(spot.phone, textMessage) : null
+                return (
+                <li key={resultKey} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-2xl font-bold tabular-nums text-gray-900">{spot.spaceCode}</p>
@@ -446,8 +474,67 @@ export default function AllocationSummaryPage() {
                       </dd>
                     </div>
                   </dl>
+                  {spot.phone ? (
+                    isTexting ? (
+                      <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <label htmlFor={`text-${resultKey}`} className="block text-sm font-semibold text-gray-800">
+                          Text parker
+                        </label>
+                        <textarea
+                          id={`text-${resultKey}`}
+                          value={textMessage}
+                          onChange={(e) => setTextMessage(e.target.value)}
+                          rows={6}
+                          className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setTextMessage(reservedSpaceTextTemplate(spot.spaceCode))}
+                            className="px-3 py-2 text-sm font-medium rounded-lg bg-white border border-gray-300 text-gray-800 hover:bg-gray-100"
+                          >
+                            Use template
+                          </button>
+                          <a
+                            href={sendHref || undefined}
+                            aria-disabled={!sendHref}
+                            onClick={(e) => {
+                              if (!sendHref) e.preventDefault()
+                            }}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg text-white ${
+                              sendHref ? 'bg-gray-900 hover:bg-gray-700' : 'bg-gray-400 pointer-events-none'
+                            }`}
+                          >
+                            Send text
+                          </a>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTextingKey(null)
+                              setTextMessage('')
+                            }}
+                            className="px-3 py-2 text-sm font-medium rounded-lg text-gray-600 hover:text-gray-900"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTextingKey(resultKey)
+                          setTextMessage(reservedSpaceTextTemplate(spot.spaceCode))
+                        }}
+                        className="mt-4 w-full px-4 py-2.5 text-sm font-semibold rounded-lg bg-gray-900 text-white hover:bg-gray-700"
+                      >
+                        Text parker
+                      </button>
+                    )
+                  ) : null}
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
         </div>
