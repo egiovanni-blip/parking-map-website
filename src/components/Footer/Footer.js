@@ -1,13 +1,6 @@
-'use client'
-
-import { usePathname } from 'next/navigation'
-
 export default function Footer() {
-  const pathname = usePathname()
-  const hideOnMobileFloor = pathname?.startsWith('/floor/')
-
   return (
-    <footer className={`bg-vend-black text-vend-white ${hideOnMobileFloor ? 'hidden lg:block' : ''}`}>
+    <footer className="bg-vend-black text-vend-white">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0">

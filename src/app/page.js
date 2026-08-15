@@ -1,31 +1,46 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthPageBackdrop from '@/components/AuthPageBackdrop'
+import DesktopOnlyNotice from '@/components/DesktopOnlyNotice'
 import { supabase } from '@/lib/supabase'
+import { isPhoneViewport } from '@/lib/phone-viewport'
 
 export default function Home() {
   const router = useRouter()
+  const [phoneTenantBlocked, setPhoneTenantBlocked] = useState(false)
 
   useEffect(() => {
     const checkSession = async () => {
-      // Check admin Supabase session
+      const phone = isPhoneViewport()
       const { data: { session } } = await supabase.auth.getSession()
       if (session) {
-        router.replace('/floor/2')
+        router.replace(phone ? '/admin/summary' : '/floor/2')
         return
       }
-      // Check tenant session via server-side API (works with HttpOnly cookies)
       const res = await fetch('/api/tenant/session')
       const data = await res.json()
       if (data.isTenant) {
+        if (phone) {
+          setPhoneTenantBlocked(true)
+          return
+        }
         router.replace('/floor/2')
       }
     }
     checkSession()
   }, [router])
+
+  if (phoneTenantBlocked) {
+    return (
+      <DesktopOnlyNotice
+        title="Use a computer"
+        message="The parking map is available on a desktop or laptop."
+      />
+    )
+  }
 
   return (
     <AuthPageBackdrop>

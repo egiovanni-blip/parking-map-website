@@ -5,6 +5,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SpotRequestModal from '@/components/SpotRequestModal'
+import DesktopOnlyNotice from '@/components/DesktopOnlyNotice'
+import { useIsPhone } from '@/hooks/useIsPhone'
 import { supabase } from '@/lib/supabase'
 import { FLOORS } from '@/lib/constants'
 
@@ -39,6 +41,56 @@ const getOccupancyStatus = (spot) => {
 }
 
 export default function PublicFloorPage() {
+  const router = useRouter()
+  const isPhone = useIsPhone()
+  const [phoneGate, setPhoneGate] = useState('pending')
+
+  useEffect(() => {
+    if (isPhone !== true) {
+      if (isPhone === false) setPhoneGate('desktop')
+      return
+    }
+
+    let cancelled = false
+    const check = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session) {
+          if (!cancelled) setPhoneGate('blocked')
+          return
+        }
+        if (cancelled) return
+        setPhoneGate('redirect')
+        router.replace('/admin/summary')
+      } catch {
+        if (!cancelled) setPhoneGate('blocked')
+      }
+    }
+    check()
+    return () => { cancelled = true }
+  }, [isPhone, router])
+
+  if (isPhone === null || phoneGate === 'pending' || phoneGate === 'redirect') {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (isPhone === true && phoneGate === 'blocked') {
+    return (
+      <DesktopOnlyNotice
+        title="Use a computer"
+        message="The parking map is available on a desktop or laptop. Phone access is limited to Allocation Summary for admin staff."
+      />
+    )
+  }
+
+  return <FloorMapView />
+}
+
+function FloorMapView() {
   const params = useParams()
   const router = useRouter()
   const floorId = params.floorId || '2'
@@ -63,10 +115,6 @@ export default function PublicFloorPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   // Map tooltip stays open only while hovering, or when pinned from Tenant Directory
   const [pinnedTooltipSpotId, setPinnedTooltipSpotId] = useState(null)
-  const [isMobile, setIsMobile] = useState(false)
-  const [mobileZoom, setMobileZoom] = useState(1)
-  const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
-  const [mobileSheetTab, setMobileSheetTab] = useState('legend') // legend | directory | details
 
   const goToNextFloor = () => {
     if (currentIndex < FLOORS.length - 1) router.push(`/floor/${FLOORS[currentIndex + 1].route}`)
@@ -88,23 +136,14 @@ export default function PublicFloorPage() {
   }
 
   useEffect(() => {
-    const mq = window.matchMedia('(max-width: 1023px)')
-    const apply = () => {
-      const mobile = mq.matches
-      setIsMobile(mobile)
-      if (!mobile) setMobileZoom(1)
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
     }
-    apply()
-    mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
   }, [])
-
-  useEffect(() => {
-    setMobileZoom(1)
-    setSelectedSpot(null)
-    setPinnedTooltipSpotId(null)
-    setExpandedCompany(null)
-  }, [floorId])
 
   // Resolve tenant/admin via server session APIs (tenant cookie is HttpOnly + signed)
   useEffect(() => {
@@ -311,19 +350,11 @@ export default function PublicFloorPage() {
   const handleSpotClick = (spot) => {
     setPinnedTooltipSpotId(null)
     setSelectedSpot(spot)
-    if (isMobile) {
-      setMobileSheetTab('details')
-      setMobileSheetOpen(true)
-    }
   }
   const handleDirectorySpotClick = (spot) => {
     // Keep the map fixed — pin the hover-style popup from the directory only
     setSelectedSpot(spot)
     setPinnedTooltipSpotId(spot.id)
-    if (isMobile) {
-      setMobileSheetTab('details')
-      setMobileSheetOpen(true)
-    }
   }
   const handleRequestSpot = (spot = null) => {
     setPinnedTooltipSpotId(null)
@@ -486,7 +517,7 @@ export default function PublicFloorPage() {
             <div key={spot.id} className={`absolute group ${isPinned ? 'z-[60]' : ''}`} style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height }}>
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <div
-                  className={`relative w-5 h-5 lg:w-4 lg:h-4 rounded-full border-2 border-white shadow-lg transition-all duration-200 pointer-events-none flex items-center justify-center ${
+                  className={`relative w-4 h-4 rounded-full border-2 border-white shadow-lg transition-all duration-200 pointer-events-none flex items-center justify-center ${
                     isPinned ? 'opacity-100 scale-125 ring-2 ring-offset-1 ring-blue-400' : 'opacity-80 group-hover:opacity-100 group-hover:scale-125'
                   }`}
                   style={{ backgroundColor: dotColor, borderColor: 'white' }}
@@ -500,7 +531,7 @@ export default function PublicFloorPage() {
                 data-spot-id={spot.id}
                 type="button"
                 tabIndex={-1}
-                className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 rounded pointer-events-auto focus:outline-none touch-manipulation"
+                className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 rounded pointer-events-auto focus:outline-none"
                 style={{
                   backgroundColor: isPinned ? `${dotColor}20` : 'transparent',
                   borderColor: isPinned ? dotColor : 'transparent',
@@ -522,7 +553,7 @@ export default function PublicFloorPage() {
                 }}
               />
               {/* Tooltip — hover only, or pinned from Tenant Directory click */}
-              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 transition-opacity pointer-events-none z-50 hidden lg:block ${
+              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 transition-opacity pointer-events-none z-50 ${
                 isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
               }`}>
                 <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl min-w-[200px]">
@@ -593,14 +624,13 @@ export default function PublicFloorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-0">
-      <div className="max-w-7xl mx-auto px-3 py-3 lg:px-4 lg:py-8">
-        <div className="mb-3 lg:mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl lg:text-2xl font-headline text-vend-black tracking-tight">{currentFloor.label} — Parking Spaces</h1>
-              <p className="text-vend-slate mt-1 text-sm lg:text-base hidden sm:block">Click a space for details. Request when it&apos;s available.</p>
-              <p className="text-vend-slate mt-1 text-sm sm:hidden">Pinch or zoom, then tap a space for details.</p>
+              <h1 className="text-2xl font-headline text-vend-black tracking-tight">{currentFloor.label} — Parking Spaces</h1>
+              <p className="text-vend-slate mt-1">Click a space for details. Request when it&apos;s available.</p>
               {!loading && !error && (
                 <div className="flex items-center gap-4 mt-2 text-sm">
                   <div className="flex items-center gap-2">
@@ -613,24 +643,14 @@ export default function PublicFloorPage() {
                 </div>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                className="lg:hidden flex-1 min-w-[8rem] px-3 py-2 bg-white border border-gray-300 text-gray-800 rounded-lg text-sm"
-                value={floorId}
-                onChange={(e) => router.push(`/floor/${e.target.value}`)}
-                aria-label="Select floor"
-              >
-                {FLOORS.map(floor => (
-                  <option key={floor.route} value={String(floor.route)}>{floor.label}</option>
-                ))}
-              </select>
-              <button onClick={goToPrevFloor} disabled={currentIndex <= 0} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation">
+            <div className="flex flex-wrap gap-2">
+              <button onClick={goToPrevFloor} disabled={currentIndex <= 0} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
                 ← {currentIndex > 0 ? FLOORS[currentIndex - 1].label : 'Back'}
               </button>
-              <button onClick={goToNextFloor} disabled={currentIndex >= FLOORS.length - 1} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation">
+              <button onClick={goToNextFloor} disabled={currentIndex >= FLOORS.length - 1} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
                 {currentIndex < FLOORS.length - 1 ? FLOORS[currentIndex + 1].label : 'Next'} →
               </button>
-              <Link href="/" className="hidden lg:flex px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm items-center gap-2">
+              <Link href="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-2">
                 ← Back to Home
               </Link>
             </div>
@@ -639,9 +659,9 @@ export default function PublicFloorPage() {
 
         <div className="flex gap-4">
           <div ref={containerRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative flex-1">
-            <div className="relative lg:h-[900px] lg:overflow-hidden">
+            <div className="w-full h-[900px] relative overflow-hidden">
               {error && !loading && (
-                <div className="text-center p-8 min-h-[240px] lg:absolute lg:inset-0 flex items-center justify-center bg-white">
+                <div className="text-center p-8 absolute inset-0 flex items-center justify-center bg-white">
                   <div>
                     <div className="text-4xl mb-4">🏢</div>
                     <p className="text-gray-600">{currentFloor.label}</p>
@@ -650,51 +670,17 @@ export default function PublicFloorPage() {
                 </div>
               )}
               {!loading && !error && svgContent && (
-                <div className="mobile-map-scroller overflow-auto max-h-[58dvh] lg:max-h-none lg:overflow-hidden lg:h-full">
-                  <div
-                    className="relative lg:h-full"
-                    style={{
-                      width: `${mobileZoom * 100}%`,
-                      aspectRatio: `${svgDimensions.width} / ${svgDimensions.height}`,
-                    }}
-                  >
-                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white">
-                      <div
-                        ref={svgRef}
-                        className="floor-map-svg w-full h-full max-w-full max-h-full"
-                        dangerouslySetInnerHTML={{ __html: svgContent }}
-                      />
-                    </div>
-                    {renderInteractiveOverlay()}
+                <div className="relative w-full h-full">
+                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white">
+                    <div ref={svgRef} className="w-full h-full max-w-full max-h-full" dangerouslySetInnerHTML={{ __html: svgContent }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
                   </div>
-                </div>
-              )}
-
-              {!error && (
-                <div className="lg:hidden absolute bottom-3 left-3 z-20 flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setMobileZoom(z => Math.max(1, Math.round((z - 0.4) * 10) / 10))}
-                    className="w-10 h-10 rounded-lg bg-white/95 border border-gray-400 shadow text-lg font-bold text-gray-800 touch-manipulation"
-                    aria-label="Zoom out"
-                  >
-                    −
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMobileZoom(z => Math.min(3, Math.round((z + 0.4) * 10) / 10))}
-                    className="w-10 h-10 rounded-lg bg-white/95 border border-gray-400 shadow text-lg font-bold text-gray-800 touch-manipulation"
-                    aria-label="Zoom in"
-                  >
-                    +
-                  </button>
+                  {renderInteractiveOverlay()}
                 </div>
               )}
             </div>
 
-            {/* Desktop side panel — overlaid so map width (and dots) stay aligned */}
             {!loading && !error && (
-              <div className="hidden lg:flex absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 w-[280px] max-h-[calc(900px-1rem)] border border-gray-400 flex-col overflow-hidden">
+              <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 w-[280px] max-h-[calc(900px-1rem)] border border-gray-400 flex flex-col overflow-hidden">
                 <div className="p-3 border-b border-gray-400 flex-shrink-0">
                   <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
                   <p className="text-gray-500 text-xs mt-1">Total: {spots.length} spaces</p>
@@ -729,62 +715,6 @@ export default function PublicFloorPage() {
           </div>
         </div>
       </div>
-
-      {/* Mobile legend / directory / details sheet */}
-      {!loading && !error && (
-        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30">
-          <div className="bg-white border-t border-gray-400 rounded-t-2xl shadow-[0_-8px_24px_rgba(17,17,20,0.12)] max-h-[70dvh] flex flex-col">
-            <button
-              type="button"
-              className="w-full pt-2 pb-1 flex flex-col items-center touch-manipulation"
-              onClick={() => setMobileSheetOpen(open => !open)}
-              aria-expanded={mobileSheetOpen}
-            >
-              <div className="w-10 h-1 rounded-full bg-gray-300 mb-2" />
-              <span className="text-xs font-medium text-gray-700">
-                {selectedSpot ? `Spot ${selectedSpot.spotNumber}` : 'Map info'}
-                {mobileSheetOpen ? ' · tap to collapse' : ' · tap to expand'}
-              </span>
-            </button>
-            {mobileSheetOpen && (
-              <>
-                <div className="flex border-b border-gray-300 text-xs">
-                  {[
-                    { id: 'legend', label: 'Legend' },
-                    { id: 'directory', label: 'Directory' },
-                    { id: 'details', label: 'Details' },
-                  ].map(tab => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setMobileSheetTab(tab.id)}
-                      className={`flex-1 py-2.5 font-medium touch-manipulation ${
-                        mobileSheetTab === tab.id
-                          ? 'text-vend-black border-b-2 border-vend-mint'
-                          : 'text-gray-500'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="overflow-y-auto min-h-0 text-xs">
-                  {mobileSheetTab === 'legend' && (
-                    <div>
-                      <div className="px-3 pt-3 font-semibold text-gray-800">Space Type Breakdown</div>
-                      <p className="px-3 text-gray-500">Total: {spots.length} spaces</p>
-                      {renderBreakdown()}
-                    </div>
-                  )}
-                  {mobileSheetTab === 'directory' && renderDirectory()}
-                  {mobileSheetTab === 'details' && renderSpotDetails()}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       <SpotRequestModal
         isOpen={showRequestModal}
         onClose={() => { setShowRequestModal(false); setRequestModalSpot(null) }}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { canAccessMobileSummary, isSuperAdminEmail } from '@/lib/admin-auth'
 
 export async function GET(request) {
   const supabase = createServerClient(
@@ -16,11 +17,12 @@ export async function GET(request) {
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session?.user) {
-    return NextResponse.json({ isSuperAdmin: false })
+    return NextResponse.json({ isSuperAdmin: false, canAccessMobileSummary: false })
   }
 
-  const isSuperAdmin =
-    session.user.email?.toLowerCase() === process.env.SUPER_ADMIN_EMAIL?.toLowerCase()
-
-  return NextResponse.json({ isSuperAdmin })
+  const email = session.user.email
+  return NextResponse.json({
+    isSuperAdmin: isSuperAdminEmail(email),
+    canAccessMobileSummary: canAccessMobileSummary(email),
+  })
 }

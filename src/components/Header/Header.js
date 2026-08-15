@@ -3,18 +3,26 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
+import { useIsPhone } from '@/hooks/useIsPhone'
 
 export default function Header() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, isTenant, loading, logout, tenantLogout } = useAuth()
+  const isPhone = useIsPhone()
 
   const isHomePage = pathname === '/'
   const isFloorPage = pathname.startsWith('/floor/')
   const isAdminPage = pathname.startsWith('/admin')
+  const isSummaryPage = pathname === '/admin/summary'
+  const adminHomeHref = user && isPhone ? '/admin/summary' : '/admin'
 
   const handleHomeClick = (e) => {
     e.preventDefault()
+    if (user && isPhone) {
+      router.push('/admin/summary')
+      return
+    }
     if (user || isTenant) {
       router.push('/floor/2')
     } else {
@@ -39,7 +47,7 @@ export default function Header() {
                 href="/"
                 onClick={handleHomeClick}
                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold cursor-pointer ${
-                  isHomePage || isFloorPage
+                  isHomePage || isFloorPage || (isPhone && isSummaryPage)
                     ? 'border-vend-mint text-vend-black'
                     : 'border-transparent text-vend-slate hover:text-vend-black hover:border-vend-concrete'
                 }`}
@@ -49,14 +57,14 @@ export default function Header() {
 
               {user && !isTenant && (
                 <Link
-                  href="/admin"
+                  href={adminHomeHref}
                   className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-semibold ${
                     isAdminPage
                       ? 'border-vend-mint text-vend-black'
                       : 'border-transparent text-vend-slate hover:text-vend-black hover:border-vend-concrete'
                   }`}
                 >
-                  Admin
+                  {isPhone ? 'Summary' : 'Admin'}
                 </Link>
               )}
             </div>
@@ -89,14 +97,14 @@ export default function Header() {
             <a
               href="/"
               onClick={handleHomeClick}
-              className={`flex-1 text-center pb-2 cursor-pointer ${isHomePage || isFloorPage ? 'border-b-2 border-vend-mint' : ''}`}
+              className={`flex-1 text-center pb-2 cursor-pointer ${isHomePage || isFloorPage || isSummaryPage ? 'border-b-2 border-vend-mint' : ''}`}
             >
-              <span className={`text-sm font-semibold ${isHomePage || isFloorPage ? 'text-vend-black' : 'text-vend-slate'}`}>
-                Home
+              <span className={`text-sm font-semibold ${isHomePage || isFloorPage || isSummaryPage ? 'text-vend-black' : 'text-vend-slate'}`}>
+                {user ? 'Summary' : 'Home'}
               </span>
             </a>
 
-            {user && !isTenant && (
+            {user && !isTenant && !isPhone && (
               <Link
                 href="/admin"
                 className={`flex-1 text-center pb-2 ${isAdminPage ? 'border-b-2 border-vend-mint' : ''}`}

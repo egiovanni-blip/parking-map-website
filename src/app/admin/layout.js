@@ -3,6 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useIsPhone } from '@/hooks/useIsPhone'
 
 const PUBLIC_ADMIN_PATHS = ['/admin/set-password', '/admin/auth/recovery', '/admin/auth/callback']
 
@@ -10,7 +11,9 @@ export default function AdminLayout({ children }) {
   const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
+  const isPhone = useIsPhone()
   const isPublicPage = PUBLIC_ADMIN_PATHS.some(path => pathname?.startsWith(path))
+  const isSummaryPage = pathname === '/admin/summary'
 
   useEffect(() => {
     if (isPublicPage || loading) return
@@ -18,6 +21,11 @@ export default function AdminLayout({ children }) {
       router.push('/login')
     }
   }, [user, loading, router, isPublicPage])
+
+  useEffect(() => {
+    if (isPublicPage || loading || !user || isPhone !== true) return
+    if (!isSummaryPage) router.replace('/admin/summary')
+  }, [user, loading, isPhone, isPublicPage, isSummaryPage, router])
 
   if (isPublicPage) {
     return <>{children}</>
@@ -33,6 +41,14 @@ export default function AdminLayout({ children }) {
 
   if (!user) {
     return null
+  }
+
+  if (isPhone === true && !isSummaryPage) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return (

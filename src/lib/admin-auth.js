@@ -13,6 +13,11 @@ export function isSuperAdminEmail(email) {
   return Boolean(superEmail && email?.toLowerCase() === superEmail)
 }
 
+/** Any signed-in admin may use the phone Allocation Summary + space search. */
+export function canAccessMobileSummary(email) {
+  return Boolean(email)
+}
+
 /** Returns true if this email may request an admin OTP (invite pending or active admin). */
 export async function isEligibleAdminEmail(email) {
   if (isSuperAdminEmail(email)) return true

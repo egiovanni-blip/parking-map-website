@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { isPhoneViewport } from '@/lib/phone-viewport'
 
 const AuthContext = createContext()
 
@@ -36,7 +37,7 @@ export function AuthProvider({ children }) {
           setUser(session.user)
           setIsTenant(false)
           if (window.location.pathname === '/login') {
-            router.push('/admin')
+            router.push(isPhoneViewport() ? '/admin/summary' : '/admin')
           }
         } else {
           setUser(null)
@@ -62,7 +63,7 @@ export function AuthProvider({ children }) {
           setIsTenant(false)
           // Only redirect to admin when coming from the login page
           if (window.location.pathname === '/login') {
-            router.push('/admin')
+            router.push(isPhoneViewport() ? '/admin/summary' : '/admin')
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
