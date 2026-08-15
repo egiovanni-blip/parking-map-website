@@ -59,15 +59,16 @@ function escapeCsvCell(value) {
 }
 
 function exportParkersToExcel(rows) {
-  const header = ['Tenant', 'Space #', 'Parker']
+  const header = ['Tenant', 'Space #', 'Parker', 'Phone']
   const lines = [header.map(escapeCsvCell).join(',')]
 
   for (const row of rows) {
     for (const spot of row.electedSpots) {
       lines.push([
         escapeCsvCell(row.tenant),
-        escapeCsvCell(spot.spotNumber),
+        escapeCsvCell(spot.spaceCode || spot.spotNumber),
         escapeCsvCell(spot.parkerName || ''),
+        escapeCsvCell(spot.phone || ''),
       ].join(','))
     }
   }
@@ -89,11 +90,121 @@ function tenantDisplay(label) {
   return tenant
 }
 
-function scoreSpaceMatch(spotNumber, query) {
-  const number = String(spotNumber).toLowerCase()
-  if (number === query) return 0
-  if (number.startsWith(query)) return 1
-  if (number.includes(query)) return 2
+function formatPhoneDisplay(phone) {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+  const trimmed = String(phone || '').trim()
+  return trimmed || null
+}
+
+function telHref(phone) {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length === 10) return `tel:+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `tel:+${digits}`
+  if (digits.length >= 7) return `tel:${digits}`
+  return null
+}
+
+function PhoneLink({ phone, className = '' }) {
+  const display = formatPhoneDisplay(phone)
+  if (!display) return <span className={className}>—</span>
+  const href = telHref(phone)
+  if (!href) return <span className={className}>{display}</span>
+  return (
+    <a href={href} className={`text-blue-700 hover:underline ${className}`} onClick={(e) => e.stopPropagation()}>
+      {display}
+    </a>
+  )
+}
+
+async function fetchParkerPhones() {
+  const requests = []
+  let from = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('spot_requests')
+      .select('status, floor_id, spot_number, requester_name, requester_phone, submitted_at')
+      .not('requester_phone', 'is', null)
+      .order('submitted_at', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1)
+
+    if (error) return { bySpotAndParker: {}, bySpot: {} }
+    requests.push(...(data || []))
+    if (!data || data.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
+
+  const bySpotAndParker = {}
+  const bySpot = {}
+
+  const consider = (row) => {
+    const phone = row.requester_phone?.trim()
+    const spaceCode = String(row.spot_number || '').trim().replace(/\s+/g, '')
+    if (!phone || !spaceCode) return
+    const floorId = String(row.floor_id || '')
+    const parker = String(row.requester_name || '').trim().toLowerCase().replace(/\s+/g, ' ')
+    const spotKey = `${floorId}|${spaceCode.toLowerCase()}`
+    if (parker && !bySpotAndParker[`${spotKey}|${parker}`]) {
+      bySpotAndParker[`${spotKey}|${parker}`] = phone
+    }
+    if (!bySpot[spotKey]) bySpot[spotKey] = phone
+    if (!bySpot[spaceCode.toLowerCase()]) bySpot[spaceCode.toLowerCase()] = phone
+  }
+
+  for (const row of requests) {
+    if (row.status === 'approved') consider(row)
+  }
+  for (const row of requests) {
+    consider(row)
+  }
+
+  return { bySpotAndParker, bySpot }
+}
+
+function lookupParkerPhone(phones, floorId, spaceCode, parkerName) {
+  const code = String(spaceCode || '').trim().toLowerCase()
+  const floor = String(floorId || '')
+  const parker = String(parkerName || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  const spotKey = `${floor}|${code}`
+  if (parker && phones.bySpotAndParker[`${spotKey}|${parker}`]) {
+    return phones.bySpotAndParker[`${spotKey}|${parker}`]
+  }
+  return phones.bySpot[spotKey] || phones.bySpot[code] || null
+}
+
+function garageLevelFromFloorLabel(floorLabel) {
+  const match = String(floorLabel || '').match(/(\d+)/)
+  return match ? match[1] : ''
+}
+
+function spaceCodeFromSpot(floorLabel, spotNumber) {
+  const raw = String(spotNumber || '').trim().replace(/\s+/g, '')
+  if (/^\d+-\d+/.test(raw)) return raw
+  const level = garageLevelFromFloorLabel(floorLabel)
+  if (!level || !raw) return raw
+  return `${level}-${raw}`
+}
+
+function normalizeSpaceQuery(query) {
+  return query
+    .trim()
+    .toLowerCase()
+    .replace(/^p\s*/i, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
+function scoreSpaceMatch(spaceCode, query) {
+  const code = String(spaceCode).toLowerCase()
+  if (code === query) return 0
+  if (code.startsWith(query)) return 1
+  if (code.includes(query)) return 2
   return null
 }
 
@@ -123,6 +234,7 @@ export default function AllocationSummaryPage() {
 
     try {
       const data = await fetchAllSpots()
+      const parkerPhones = await fetchParkerPhones()
       const searchable = []
       const byTenant = {}
 
@@ -130,12 +242,18 @@ export default function AllocationSummaryPage() {
         const spotNumber = spot.original_label?.trim()
         if (!spotNumber || spotNumber.toLowerCase() === 'unlabeled') continue
 
+        const floorLabel = FLOOR_LABEL_BY_ID[String(spot.floor_id)] || `Level ${spot.floor_id}`
+        const spaceCode = spaceCodeFromSpot(floorLabel, spotNumber)
+        const parkerName = spot.custom_label?.trim() || null
+        const phone = lookupParkerPhone(parkerPhones, spot.floor_id, spaceCode, parkerName)
         searchable.push({
           spotNumber,
+          spaceCode,
           floorId: String(spot.floor_id),
-          floorLabel: FLOOR_LABEL_BY_ID[String(spot.floor_id)] || `Level ${spot.floor_id}`,
+          floorLabel,
           tenant: tenantDisplay(spot.display_label),
-          parkerName: spot.custom_label?.trim() || null,
+          phone,
+          parkerName,
           spotType: spot.spot_type || 'regular',
         })
 
@@ -152,16 +270,14 @@ export default function AllocationSummaryPage() {
           byTenant[key].elected += 1
           byTenant[key].electedSpots.push({
             spotNumber,
-            parkerName: spot.custom_label?.trim() || null,
+            spaceCode,
+            parkerName,
+            phone,
           })
         }
       }
 
-      searchable.sort((a, b) => {
-        const floor = String(a.floorLabel).localeCompare(String(b.floorLabel), undefined, { numeric: true })
-        if (floor !== 0) return floor
-        return compareSpotNumbers(a.spotNumber, b.spotNumber)
-      })
+      searchable.sort((a, b) => compareSpotNumbers(a.spaceCode, b.spaceCode))
 
       const sorted = Object.values(byTenant)
         .map(row => ({
@@ -191,21 +307,19 @@ export default function AllocationSummaryPage() {
   }
 
   const searchResults = useMemo(() => {
-    const normalized = query.trim().toLowerCase()
+    const normalized = normalizeSpaceQuery(query)
     if (!normalized) return []
 
     return lookupSpots
       .map((spot) => {
-        const score = scoreSpaceMatch(spot.spotNumber, normalized)
+        const score = scoreSpaceMatch(spot.spaceCode, normalized)
         if (score == null) return null
         return { ...spot, score }
       })
       .filter(Boolean)
       .sort((a, b) => {
         if (a.score !== b.score) return a.score - b.score
-        const floor = String(a.floorLabel).localeCompare(String(b.floorLabel), undefined, { numeric: true })
-        if (floor !== 0) return floor
-        return compareSpotNumbers(a.spotNumber, b.spotNumber)
+        return compareSpotNumbers(a.spaceCode, b.spaceCode)
       })
       .slice(0, 40)
   }, [lookupSpots, query])
@@ -276,19 +390,19 @@ export default function AllocationSummaryPage() {
               Look up a space number
             </label>
             <p className="text-sm text-gray-500 mt-1">
-              Type the painted stall number to see tenant, parker, and level.
+              Type the stall as level-space, like 3-144.
             </p>
             <input
               id="space-search"
               ref={searchInputRef}
               type="search"
-              inputMode="numeric"
+              inputMode="text"
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. 214"
+              placeholder="e.g. 3-144"
               className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-lg text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -297,7 +411,7 @@ export default function AllocationSummaryPage() {
             <div className="p-10 text-center text-gray-500">Loading spaces…</div>
           ) : !query.trim() ? (
             <div className="p-10 text-center text-gray-500">
-              Enter a space number to audit it in the garage.
+              Enter a stall like 3-144 to audit it in the garage.
             </div>
           ) : searchResults.length === 0 ? (
             <div className="p-10 text-center text-gray-500">
@@ -306,10 +420,10 @@ export default function AllocationSummaryPage() {
           ) : (
             <ul className="divide-y divide-gray-100">
               {searchResults.map((spot, idx) => (
-                <li key={`${spot.floorId}-${spot.spotNumber}-${idx}`} className="px-4 py-4">
+                <li key={`${spot.floorId}-${spot.spaceCode}-${idx}`} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-2xl font-bold tabular-nums text-gray-900">{spot.spotNumber}</p>
+                      <p className="text-2xl font-bold tabular-nums text-gray-900">{spot.spaceCode}</p>
                       <p className="mt-1 text-sm text-gray-500">{spot.floorLabel}</p>
                     </div>
                     <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
@@ -324,6 +438,12 @@ export default function AllocationSummaryPage() {
                     <div className="flex justify-between gap-3">
                       <dt className="text-gray-500">Parker</dt>
                       <dd className="font-medium text-gray-900 text-right">{spot.parkerName || '—'}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <dt className="text-gray-500">Phone</dt>
+                      <dd className="font-medium text-right">
+                        <PhoneLink phone={spot.phone} />
+                      </dd>
                     </div>
                   </dl>
                 </li>
@@ -395,16 +515,20 @@ export default function AllocationSummaryPage() {
                                   <tr className="border-b border-gray-200 bg-gray-50 text-left">
                                     <th className="px-3 py-2 font-semibold text-gray-700">Space #</th>
                                     <th className="px-3 py-2 font-semibold text-gray-700">Parker</th>
+                                    <th className="px-3 py-2 font-semibold text-gray-700">Phone</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {row.electedSpots.map((spot, idx) => (
                                     <tr key={`${spot.spotNumber}-${idx}`} className="border-b border-gray-100 last:border-0">
                                       <td className="px-3 py-2 font-medium text-gray-900 tabular-nums">
-                                        {spot.spotNumber}
+                                        {spot.spaceCode || spot.spotNumber}
                                       </td>
                                       <td className="px-3 py-2 text-gray-600">
                                         {spot.parkerName || '—'}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <PhoneLink phone={spot.phone} />
                                       </td>
                                     </tr>
                                   ))}
