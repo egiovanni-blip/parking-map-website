@@ -191,6 +191,18 @@ h3, h4, .font-subhead {
   max-height: 100%;
 }
 
+.floor-map-svg svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.mobile-map-scroller {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-x pan-y;
+}
+
 .parking-spot {
   transition: all 0.2s ease;
   pointer-events: all;

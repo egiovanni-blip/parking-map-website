@@ -17,6 +17,8 @@ export async function middleware(request) {
     '/api/tenant/set-password',
     '/api/tenant/request-otp',
     '/api/tenant/logout',
+    '/api/admin/request-otp',
+    '/api/admin/set-password',
     '/api/spot-requests',
     '/login',
     '/attendant',

@@ -28,7 +28,12 @@ export async function POST(request) {
       Response.json({ error: 'Incorrect email or password. Please try again.' }, { status: 401 })
 
     if (tenantError || !tenant) return authFailed()
-    if (!tenant.password_hash) return authFailed()
+    if (!tenant.password_hash) {
+      return Response.json(
+        { error: 'No password set yet. Please set your password first.', code: 'PASSWORD_NOT_SET' },
+        { status: 401 }
+      )
+    }
 
     const valid = await bcrypt.compare(password, tenant.password_hash)
     if (!valid) return authFailed()

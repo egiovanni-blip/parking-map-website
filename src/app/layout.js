@@ -23,6 +23,13 @@ export const metadata = {
   description: 'Find and request parking spaces — fast, clear, and effortless.',
 }
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: 'cover',
+}
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`h-full ${spaceGrotesk.variable} ${manrope.variable}`}>

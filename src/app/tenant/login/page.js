@@ -30,7 +30,12 @@ function TenantLoginForm() {
         body: JSON.stringify({ email, password })
       })
       const data = await res.json()
-      if (!res.ok) return setError(data.error || 'Something went wrong.')
+      if (!res.ok) {
+        if (data.code === 'PASSWORD_NOT_SET') {
+          return setError('No password set yet. Use "Set your password" below to get a verification code.')
+        }
+        return setError(data.error || 'Something went wrong.')
+      }
       // Update the AuthContext so the header shows Logout immediately (no refresh needed)
       await refreshTenantStatus()
       router.replace('/floor/2')
@@ -85,6 +90,11 @@ function TenantLoginForm() {
           >
             <span className="text-base leading-none" aria-hidden>👁</span>
           </button>
+        </div>
+        <div className="mt-1 text-right">
+          <Link href="/tenant/set-password" className="text-xs text-blue-600 hover:underline">
+            Forgot password?
+          </Link>
         </div>
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
       </div>

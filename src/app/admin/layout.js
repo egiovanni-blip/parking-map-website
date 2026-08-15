@@ -2,18 +2,26 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
+
+const PUBLIC_ADMIN_PATHS = ['/admin/set-password', '/admin/auth/recovery', '/admin/auth/callback']
 
 export default function AdminLayout({ children }) {
   const { user, loading } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
+  const isPublicPage = PUBLIC_ADMIN_PATHS.some(path => pathname?.startsWith(path))
 
   useEffect(() => {
-    if (loading) return
+    if (isPublicPage || loading) return
     if (!user) {
       router.push('/login')
     }
-  }, [user, loading, router])
+  }, [user, loading, router, isPublicPage])
+
+  if (isPublicPage) {
+    return <>{children}</>
+  }
 
   if (loading) {
     return (

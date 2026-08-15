@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import { getResendFromAddress } from '@/lib/otp-email'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -46,7 +47,7 @@ export async function POST(request) {
 
     try {
       await resend.emails.send({
-        from: 'onboarding@resend.dev',
+        from: getResendFromAddress(),
         to: process.env.NOTIFY_EMAIL,
         subject: `New Parking Request — Spot ${spot_number} (${floor_label})`,
         html: `

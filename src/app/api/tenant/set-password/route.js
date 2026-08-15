@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import bcrypt from 'bcryptjs'
+import { verifyOtp, sendPasswordSetConfirmationEmail } from '@/lib/otp-email'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -16,7 +17,9 @@ export async function POST(request) {
     if (!email) return Response.json({ error: 'Email is required.' }, { status: 400 })
     if (!otp) return Response.json({ error: 'Verification code is required.' }, { status: 400 })
     if (!password) return Response.json({ error: 'Password is required.' }, { status: 400 })
-    if (password.length < 8) return Response.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
+    if (password.length < 8) {
+      return Response.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
+    }
 
     const { data: tenant, error: tenantError } = await supabase
       .from('tenant_contacts')
@@ -29,7 +32,6 @@ export async function POST(request) {
       return Response.json({ error: 'Invalid or expired verification code.' }, { status: 400 })
     }
 
-    // Verify OTP exists and hasn't expired
     if (!tenant.otp_hash || !tenant.otp_expires_at) {
       return Response.json({ error: 'No verification code found. Please request a new one.' }, { status: 400 })
     }
@@ -38,12 +40,11 @@ export async function POST(request) {
       return Response.json({ error: 'Verification code has expired. Please request a new one.' }, { status: 400 })
     }
 
-    const otpValid = await bcrypt.compare(otp, tenant.otp_hash)
+    const otpValid = await verifyOtp(otp, tenant.otp_hash)
     if (!otpValid) {
       return Response.json({ error: 'Incorrect verification code.' }, { status: 400 })
     }
 
-    // OTP verified — hash new password and clear the OTP in one update
     const password_hash = await bcrypt.hash(password, 12)
 
     const { error: updateError } = await supabase
@@ -56,8 +57,13 @@ export async function POST(request) {
       return Response.json({ error: 'Failed to save password. Please try again.' }, { status: 500 })
     }
 
-    return Response.json({ success: true })
+    try {
+      await sendPasswordSetConfirmationEmail({ to: email, portalLabel: 'Parking Portal' })
+    } catch (emailErr) {
+      console.error('Tenant confirmation email error:', emailErr.message)
+    }
 
+    return Response.json({ success: true })
   } catch (err) {
     console.error('Set password error:', err.message)
     return Response.json({ error: 'Something went wrong.' }, { status: 500 })
