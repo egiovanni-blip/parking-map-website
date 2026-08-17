@@ -79,12 +79,18 @@ export async function POST(request) {
       if (!existingRow) {
         const { error: insertError } = await supabaseAdmin
           .from('admin_users')
-          .insert([{ id: authUser.id, is_active: true }])
+          .insert([{ id: authUser.id, email, is_active: true }])
 
         if (insertError) {
           console.error('Admin users insert error:', insertError.message)
           return Response.json({ error: 'Password saved but failed to grant admin access.' }, { status: 500 })
         }
+      } else {
+        // Keep email in sync for future password-reset eligibility checks
+        await supabaseAdmin
+          .from('admin_users')
+          .update({ email, is_active: true })
+          .eq('id', authUser.id)
       }
     }
 

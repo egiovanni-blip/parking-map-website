@@ -22,15 +22,28 @@ export function otpExpiresAt(minutes = 15) {
 }
 
 export function getResendFromAddress() {
-  return process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
+  const raw = (process.env.RESEND_FROM_EMAIL || '').trim().replace(/^["']|["']$/g, '')
+  return raw || 'onboarding@resend.dev'
+}
+
+async function sendResendEmail(payload) {
+  const from = getResendFromAddress()
+  const { data, error } = await resend.emails.send({ ...payload, from })
+
+  if (error) {
+    const message = error.message || 'Failed to send email.'
+    console.error('Resend send error:', message, { from, to: payload.to })
+    throw new Error(message)
+  }
+
+  return data
 }
 
 export async function sendVerificationCodeEmail({ to, portalLabel, purpose, otp: existingOtp }) {
   const otp = existingOtp || generateOtp()
   const otp_hash = await hashOtp(otp)
 
-  await resend.emails.send({
-    from: getResendFromAddress(),
+  await sendResendEmail({
     to,
     subject: `Your ${portalLabel} verification code`,
     html: `
@@ -54,8 +67,7 @@ export async function sendVerificationCodeEmail({ to, portalLabel, purpose, otp:
 }
 
 export async function sendPasswordSetConfirmationEmail({ to, portalLabel }) {
-  await resend.emails.send({
-    from: getResendFromAddress(),
+  await sendResendEmail({
     to,
     subject: `Your ${portalLabel} password is set`,
     html: `

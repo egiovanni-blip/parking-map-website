@@ -20,24 +20,31 @@ export function canAccessMobileSummary(email) {
 
 /** Returns true if this email may request an admin OTP (invite pending or active admin). */
 export async function isEligibleAdminEmail(email) {
-  if (isSuperAdminEmail(email)) return true
+  const normalized = email?.toLowerCase().trim()
+  if (!normalized) return false
+  if (isSuperAdminEmail(normalized)) return true
 
   const supabaseAdmin = getSupabaseAdmin()
+
+  // Active admins are looked up by email first (reliable for password reset).
+  const { data: adminByEmail } = await supabaseAdmin
+    .from('admin_users')
+    .select('id, is_active')
+    .ilike('email', normalized)
+    .maybeSingle()
+
+  if (adminByEmail?.is_active) return true
 
   const { data: invite } = await supabaseAdmin
     .from('admin_invites')
     .select('email')
-    .eq('email', email)
+    .eq('email', normalized)
     .maybeSingle()
 
   if (invite) return true
 
-  const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({
-    page: 1,
-    perPage: 1000,
-  })
-
-  const authUser = users.find(u => u.email?.toLowerCase() === email)
+  // Fallback: auth user id must match an active admin_users row.
+  const authUser = await findAuthUserByEmail(normalized)
   if (!authUser) return false
 
   const { data: adminRow } = await supabaseAdmin

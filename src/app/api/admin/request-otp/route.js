@@ -12,20 +12,28 @@ export async function POST(request) {
 
     const eligible = await isEligibleAdminEmail(email)
 
-    if (eligible) {
-      const { otp_hash, otp_expires_at } = await sendVerificationCodeEmail({
-        to: email,
-        portalLabel: 'Admin Portal',
-        purpose: 'set or reset your admin password',
-      })
-
-      const supabaseAdmin = getSupabaseAdmin()
-      await supabaseAdmin
-        .from('admin_invites')
-        .upsert({ email, otp_hash, otp_expires_at })
+    if (!eligible) {
+      console.warn('Admin OTP skipped — email not eligible:', email)
+      // Always return success to prevent email enumeration
+      return Response.json({ success: true })
     }
 
-    // Always return success to prevent email enumeration
+    const { otp_hash, otp_expires_at } = await sendVerificationCodeEmail({
+      to: email,
+      portalLabel: 'Admin Portal',
+      purpose: 'set or reset your admin password',
+    })
+
+    const supabaseAdmin = getSupabaseAdmin()
+    const { error: upsertError } = await supabaseAdmin
+      .from('admin_invites')
+      .upsert({ email, otp_hash, otp_expires_at })
+
+    if (upsertError) {
+      console.error('Admin OTP invite upsert error:', upsertError.message)
+      return Response.json({ error: 'Could not save verification code. Please try again.' }, { status: 500 })
+    }
+
     return Response.json({ success: true })
   } catch (err) {
     console.error('Admin OTP request error:', err.message)
