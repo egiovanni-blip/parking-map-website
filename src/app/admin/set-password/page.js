@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import AuthPageBackdrop from '@/components/AuthPageBackdrop'
+import AdminAuthBackdrop, { AdminAuthShell } from '@/components/AdminAuthBackdrop'
 
 export default function AdminSetPasswordPage() {
   const [step, setStep] = useState(1)
@@ -73,20 +73,16 @@ export default function AdminSetPasswordPage() {
   }
 
   return (
-    <AuthPageBackdrop>
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-          <div className="bg-vend-black px-6 py-5">
-            <p className="text-vend-mint text-xs font-semibold tracking-wide uppercase mb-1">The Republic</p>
-            <h1 className="text-vend-white font-headline text-xl tracking-tight">Set admin password</h1>
-            <p className="text-vend-concrete text-sm mt-1 font-subhead">
-              {step === 1
-                ? 'Enter your email to receive a verification code'
-                : 'Enter the code we sent you, then choose a password'}
-            </p>
-          </div>
-
-          <div className="p-6">
+    <AdminAuthBackdrop>
+      <AdminAuthShell
+        title="Set admin password"
+        subtitle={
+          step === 1
+            ? 'Enter your email to receive a verification code'
+            : 'Enter the code we sent you, then choose a password'
+        }
+      >
+          <div className="bg-vend-warm-100/50 p-6">
             {success ? (
               <div className="text-center py-4">
                 <div className="text-5xl mb-4">✅</div>
@@ -96,9 +92,9 @@ export default function AdminSetPasswordPage() {
                 </p>
                 <Link
                   href="/login"
-                  className="block w-full mt-6 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium text-center"
+                  className="vend-btn-primary mt-6 block w-full rounded-lg px-4 py-2 text-center text-sm"
                 >
-                  Go to Admin Login →
+                  Go to admin login →
                 </Link>
               </div>
             ) : step === 1 ? (
@@ -122,13 +118,13 @@ export default function AdminSetPasswordPage() {
                 <button
                   onClick={handleSendCode}
                   disabled={loading}
-                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
+                  className="vend-btn-primary w-full rounded-lg px-4 py-2 text-sm disabled:opacity-50"
                 >
-                  {loading ? 'Sending...' : 'Send Verification Code →'}
+                  {loading ? 'Sending...' : 'Send verification code →'}
                 </button>
-                <p className="text-xs text-gray-400 text-center mt-4">
+                <p className="mt-4 text-center text-xs text-vend-slate">
                   Already have a password?{' '}
-                  <Link href="/login" className="text-blue-600 hover:underline">Sign in</Link>
+                  <Link href="/login" className="font-semibold text-vend-black underline-offset-2 hover:underline">Sign in</Link>
                 </p>
               </div>
             ) : (
@@ -218,9 +214,9 @@ export default function AdminSetPasswordPage() {
                 <button
                   onClick={handleSetPassword}
                   disabled={loading}
-                  className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
+                  className="vend-btn-primary w-full rounded-lg px-4 py-2 text-sm disabled:opacity-50"
                 >
-                  {loading ? 'Saving...' : 'Set Password →'}
+                  {loading ? 'Saving...' : 'Set password →'}
                 </button>
 
                 <div className="mt-4 flex items-center justify-between text-xs text-gray-400">
@@ -238,8 +234,7 @@ export default function AdminSetPasswordPage() {
               </div>
             )}
           </div>
-        </div>
-      </div>
-    </AuthPageBackdrop>
+      </AdminAuthShell>
+    </AdminAuthBackdrop>
   )
 }

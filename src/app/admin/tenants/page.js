@@ -13,6 +13,9 @@ export default function TenantContactsPage() {
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [customCompany, setCustomCompany] = useState('')
+  const [initialPassword, setInitialPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -123,6 +126,9 @@ export default function TenantContactsPage() {
     setEditingId(null)
     setForm(emptyForm)
     setCustomCompany('')
+    setInitialPassword('')
+    setConfirmPassword('')
+    setShowPassword(false)
     setError('')
   }
 
@@ -136,25 +142,50 @@ export default function TenantContactsPage() {
     if (!form.email) return setError('Please enter an email.')
     if (!fullName) return setError('Please enter a full name.')
     if (!resolvedCompany) return setError('Please select or enter a company name.')
+    if (initialPassword || confirmPassword) {
+      if (!initialPassword) return setError('Please enter an initial password.')
+      if (initialPassword.length < 8) return setError('Password must be at least 8 characters.')
+      if (initialPassword !== confirmPassword) return setError('Passwords do not match.')
+    }
     setSaving(true)
     setError('')
 
-    const { error } = await supabase
-      .from('tenant_contacts')
-      .insert([{
-        email: form.email.toLowerCase().trim(),
-        full_name: fullName,
-        company_name: resolvedCompany,
-      }])
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers = { 'Content-Type': 'application/json' }
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`
+      }
 
-    if (error) {
-      setError(error.message.includes('unique') ? 'This email is already registered.' : error.message)
-    } else {
-      setSuccess('Contact added successfully.')
-      resetForm()
-      loadContacts()
-      loadCompanyOptions()
-      setTimeout(() => setSuccess(''), 3000)
+      const res = await fetch('/api/admin/tenant-contacts', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers,
+        body: JSON.stringify({
+          email: form.email,
+          full_name: fullName,
+          company_name: resolvedCompany,
+          password: initialPassword || undefined,
+        }),
+      })
+
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(body.error || 'Failed to add contact.')
+      } else {
+        setSuccess(
+          body.passwordSet
+            ? 'Contact added with initial password set.'
+            : 'Contact added successfully. Tenant can set a password via the login page.'
+        )
+        resetForm()
+        loadContacts()
+        loadCompanyOptions()
+        setTimeout(() => setSuccess(''), 4000)
+      }
+    } catch (err) {
+      console.error('Add tenant contact error:', err)
+      setError('Failed to add contact. Please try again.')
     }
     setSaving(false)
   }
@@ -281,6 +312,45 @@ export default function TenantContactsPage() {
             )}
           </div>
         </div>
+        {!isEditing && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Initial password <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                  placeholder="Min. 8 characters"
+                  value={initialPassword}
+                  onChange={(e) => setInitialPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-700"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? '🙈' : '👁'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                placeholder="Re-enter password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <p className="md:col-span-2 text-xs text-gray-500 -mt-2">
+              Leave blank if the tenant will set their own password via the tenant login page.
+            </p>
+          </div>
+        )}
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
         {success && <p className="text-green-600 text-sm mb-3">{success}</p>}
         <div className="flex items-center gap-3">

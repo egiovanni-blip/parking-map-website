@@ -15,16 +15,26 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isTenant, setIsTenant] = useState(false)
+  const [tenantProfile, setTenantProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
-  // Use the server-side session API — more reliable than parsing document.cookie
   const checkTenantSession = async () => {
     try {
       const res = await fetch('/api/tenant/session')
       const data = await res.json()
-      return data.isTenant === true
+      if (data.isTenant === true) {
+        setTenantProfile({
+          email: data.email || null,
+          full_name: data.full_name || null,
+          company_name: data.company_name || null,
+        })
+        return true
+      }
+      setTenantProfile(null)
+      return false
     } catch {
+      setTenantProfile(null)
       return false
     }
   }
@@ -36,6 +46,7 @@ export function AuthProvider({ children }) {
         if (session?.user) {
           setUser(session.user)
           setIsTenant(false)
+          setTenantProfile(null)
           if (window.location.pathname === '/login') {
             router.push(isPhoneViewport() ? '/admin/summary' : '/admin')
           }
@@ -61,6 +72,7 @@ export function AuthProvider({ children }) {
         if (event === 'SIGNED_IN' && session?.user) {
           setUser(session.user)
           setIsTenant(false)
+          setTenantProfile(null)
           // Only redirect to admin when coming from the login page
           if (window.location.pathname === '/login') {
             router.push(isPhoneViewport() ? '/admin/summary' : '/admin')
@@ -68,6 +80,7 @@ export function AuthProvider({ children }) {
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
           setIsTenant(false)
+          setTenantProfile(null)
         }
       }
     )
@@ -81,12 +94,14 @@ export function AuthProvider({ children }) {
     await fetch('/api/tenant/logout', { method: 'POST' })
     setUser(null)
     setIsTenant(false)
+    setTenantProfile(null)
     router.push('/')
   }
 
   const tenantLogout = async () => {
     await fetch('/api/tenant/logout', { method: 'POST' })
     setIsTenant(false)
+    setTenantProfile(null)
     router.push('/tenant/login')
   }
 
@@ -94,9 +109,10 @@ export function AuthProvider({ children }) {
   const refreshTenantStatus = async () => {
     const tenantActive = await checkTenantSession()
     setIsTenant(tenantActive)
+    if (!tenantActive) setTenantProfile(null)
   }
 
-  const value = { user, isTenant, loading, logout, tenantLogout, refreshTenantStatus }
+  const value = { user, isTenant, tenantProfile, loading, logout, tenantLogout, refreshTenantStatus }
 
   return (
     <AuthContext.Provider value={value}>

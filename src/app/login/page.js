@@ -1,10 +1,10 @@
 import LoginForm from '@/components/admin/LoginForm'
-import AuthPageBackdrop from '@/components/AuthPageBackdrop'
+import AdminAuthBackdrop from '@/components/AdminAuthBackdrop'
 
 export default function LoginPage() {
   return (
-    <AuthPageBackdrop>
+    <AdminAuthBackdrop>
       <LoginForm />
-    </AuthPageBackdrop>
+    </AdminAuthBackdrop>
   )
 }

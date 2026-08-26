@@ -40,7 +40,8 @@ export async function POST(request) {
 
     const cookieValue = await signTenantCookie({
       email: tenant.email,
-      company_name: tenant.company_name
+      full_name: tenant.full_name || null,
+      company_name: tenant.company_name,
     })
 
     const cookieStore = await cookies()
