@@ -256,8 +256,8 @@ h3, h4, .font-subhead {
 }
 
 .parking-spot.selected {
-  fill: rgba(62, 139, 255, 0.55) !important;
-  stroke: #3E8BFF !important;
+  fill: rgba(0, 204, 190, 0.55) !important;
+  stroke: #00CCBE !important;
   stroke-width: 3px !important;
   filter: drop-shadow(0 4px 6px rgba(17, 17, 20, 0.25));
 }

@@ -9,6 +9,14 @@ import DesktopOnlyNotice from '@/components/DesktopOnlyNotice'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { supabase } from '@/lib/supabase'
 import { FLOORS } from '@/lib/constants'
+import {
+  MAP_SIDE_PANEL_INSET,
+  applyFloorMapViewBoxCrop,
+  getFloorMapZoom,
+  getSvgMeetLayout,
+  getSvgViewBoxSize,
+  spotToOverlayPercent,
+} from '@/lib/svg-map-layout'
 
 const SPOT_TYPES = [
   { id: 'regular', name: 'Regular', color: '#fbbf24' },
@@ -103,18 +111,17 @@ function FloorMapView() {
   const [error, setError] = useState('')
   const [spots, setSpots] = useState([])
   const [selectedSpot, setSelectedSpot] = useState(null)
-  const [containerRect, setContainerRect] = useState(null)
+  const [hoveredSpotId, setHoveredSpotId] = useState(null)
+  const [mapLayout, setMapLayout] = useState(null)
   const svgRef = useRef(null)
+  const mapStageRef = useRef(null)
   const containerRef = useRef(null)
-  const [svgDimensions, setSvgDimensions] = useState({ width: 1000, height: 800 })
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [requestModalSpot, setRequestModalSpot] = useState(null)
   const [expandedCompany, setExpandedCompany] = useState(null)
   const [tenantCompany, setTenantCompany] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
-  // Map tooltip stays open only while hovering, or when pinned from Tenant Directory
-  const [pinnedTooltipSpotId, setPinnedTooltipSpotId] = useState(null)
 
   const goToNextFloor = () => {
     if (currentIndex < FLOORS.length - 1) router.push(`/floor/${FLOORS[currentIndex + 1].route}`)
@@ -210,7 +217,6 @@ function FloorMapView() {
     const viewBox = svgElement.viewBox?.animVal || svgElement.viewBox?.baseVal
     let svgWidth = viewBox?.width || svgElement.clientWidth || 1000
     let svgHeight = viewBox?.height || svgElement.clientHeight || 800
-    setSvgDimensions({ width: svgWidth, height: svgHeight })
 
     const allElements = svgElement.querySelectorAll('*')
     const coloredShapes = []
@@ -301,7 +307,7 @@ function FloorMapView() {
       if (!container) return
       const svgElement = container.querySelector('svg')
       if (!svgElement) return
-      updateContainerRect()
+      updateMapLayout()
       try {
         const detectedSpots = findSpotsWithText(svgElement)
         if (detectedSpots.length === 0) { setSpots([]); return }
@@ -324,40 +330,48 @@ function FloorMapView() {
     return () => clearTimeout(timer)
   }, [svgContent, loading, error, floorId])
 
-  const updateContainerRect = () => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect()
-      setContainerRect({ left: rect.left, top: rect.top, width: rect.width, height: rect.height })
-    }
+  useEffect(() => {
+    if (!svgRef.current) return
+    svgRef.current.innerHTML = svgContent || ''
+  }, [floorId, svgContent])
+
+  const updateMapLayout = () => {
+    const stage = mapStageRef.current
+    if (!stage) return
+    const svgElement = stage.querySelector('svg')
+    if (!svgElement) return
+
+    const crop = applyFloorMapViewBoxCrop(svgElement, floorId)
+    const { width: vbWidth, height: vbHeight } = getSvgViewBoxSize(svgElement)
+    const { width: containerWidth, height: containerHeight } = stage.getBoundingClientRect()
+    setMapLayout(getSvgMeetLayout(vbWidth, vbHeight, containerWidth, containerHeight, {
+      cropX: crop?.x ?? 0,
+      cropY: crop?.y ?? 0,
+      leftInset: MAP_SIDE_PANEL_INSET,
+      rightInset: MAP_SIDE_PANEL_INSET,
+      align: 'center',
+      fit: 'meet',
+      zoom: getFloorMapZoom(floorId),
+    }))
   }
 
   useEffect(() => {
-    window.addEventListener('resize', updateContainerRect)
-    updateContainerRect()
-    return () => window.removeEventListener('resize', updateContainerRect)
-  }, [])
+    if (!mapStageRef.current) return
+    const observer = new ResizeObserver(() => updateMapLayout())
+    observer.observe(mapStageRef.current)
+    updateMapLayout()
+    return () => observer.disconnect()
+  }, [svgContent, loading, error, spots.length])
 
-  const calculateSpotPosition = (spot) => {
-    if (!spot || !svgDimensions.width || !svgDimensions.height) return null
-    return {
-      left: `${(spot.svgX / svgDimensions.width) * 100}%`,
-      top: `${(spot.svgY / svgDimensions.height) * 100}%`,
-      width: `${Math.max((spot.svgWidth / svgDimensions.width) * 100, 1)}%`,
-      height: `${Math.max((spot.svgHeight / svgDimensions.height) * 100, 1)}%`
-    }
-  }
+  const calculateSpotPosition = (spot) => spotToOverlayPercent(spot, mapLayout)
 
   const handleSpotClick = (spot) => {
-    setPinnedTooltipSpotId(null)
     setSelectedSpot(spot)
   }
   const handleDirectorySpotClick = (spot) => {
-    // Keep the map fixed — pin the hover-style popup from the directory only
     setSelectedSpot(spot)
-    setPinnedTooltipSpotId(spot.id)
   }
   const handleRequestSpot = (spot = null) => {
-    setPinnedTooltipSpotId(null)
     setRequestModalSpot(spot)
     setShowRequestModal(true)
   }
@@ -460,36 +474,58 @@ function FloorMapView() {
     )
   }
 
+  const getSpotStatusDisplay = (spot, occupancy) => {
+    if (occupancy.type === null) {
+      const reserved = spot.spotTypeConfig?.id === 'reserved'
+      return {
+        label: reserved ? 'Reserved' : 'Available',
+        className: reserved ? 'text-red-400' : 'text-green-400',
+      }
+    }
+    if (isOtherCompany(spot.companyName)) {
+      return { label: 'Reserved', className: 'text-red-400' }
+    }
+    return {
+      label: 'Occupied',
+      className: occupancy.type === 'company' ? 'text-blue-400' : 'text-purple-400',
+    }
+  }
+
   const renderSpotDetails = () => {
     if (!selectedSpot) {
       return <p className="p-3 text-gray-500 text-xs">Tap a space on the map to see details.</p>
     }
+    const occupancy = getOccupancyStatus(selectedSpot)
+    const status = getSpotStatusDisplay(selectedSpot, occupancy)
     return (
       <div className="p-3 bg-gray-50">
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-semibold text-gray-800">Spot Details</h3>
-          <button onClick={() => { setSelectedSpot(null); setPinnedTooltipSpotId(null) }} className="text-xs text-gray-500 hover:text-gray-700 py-1 px-2">✕ Close</button>
+          <button onClick={() => setSelectedSpot(null)} className="text-xs text-gray-500 hover:text-gray-700 py-1 px-2">✕ Close</button>
         </div>
         <div className="bg-white rounded-lg border border-gray-400 p-3">
           <div className="text-xl font-bold text-gray-900 mb-2">{selectedSpot.spotNumber}</div>
           <div className="mb-2">
             <div className="text-[10px] uppercase tracking-wide text-gray-500">Status</div>
             <div className="font-medium text-gray-700 text-sm">
-              {isAdmin
-                ? getOccupancyStatus(selectedSpot).description
-                : isOtherCompany(selectedSpot.companyName)
-                  ? 'Reserved'
-                  : getOccupancyStatus(selectedSpot).description}
+              {isOtherCompany(selectedSpot.companyName) && !isAdmin
+                ? 'Reserved'
+                : status.label}
             </div>
-            {selectedSpot.parkerName && !isOtherCompany(selectedSpot.companyName) && (
+            {selectedSpot.parkerName && isAdmin && (
               <div className="font-medium text-gray-700 text-sm mt-1">
-                Parker: {isAdmin ? selectedSpot.parkerName : 'Occupied'}
+                Parker: {selectedSpot.parkerName}
+              </div>
+            )}
+            {occupancy.type === 'company' && !isOtherCompany(selectedSpot.companyName) && (
+              <div className="font-medium text-gray-700 text-sm mt-1">
+                Company: {selectedSpot.companyName}
               </div>
             )}
           </div>
           {selectedSpot.spotTypeConfig && (
             <div className="mb-2">
-              <div className="text-[10px] uppercase tracking-wide text-gray-500">Spot Type</div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-500">Space type</div>
               <div className="font-medium text-sm" style={{ color: selectedSpot.spotTypeConfig.color }}>{selectedSpot.spotTypeConfig.name}</div>
             </div>
           )}
@@ -504,7 +540,8 @@ function FloorMapView() {
   }
 
   const renderInteractiveOverlay = () => {
-    if (!svgContent || spots.length === 0) return null
+    if (!svgContent || spots.length === 0 || !mapLayout) return null
+    const highlightColor = '#00CCBE'
     return (
       <div className="absolute inset-0 pointer-events-none">
         {spots.map((spot) => {
@@ -512,13 +549,15 @@ function FloorMapView() {
           if (!pos) return null
           const occupancy = getOccupancyStatus(spot)
           const dotColor = spot.spotTypeConfig?.color || '#9ca3af'
-          const isPinned = pinnedTooltipSpotId === spot.id
+          const isSelected = selectedSpot?.id === spot.id
+          const isHovered = hoveredSpotId === spot.id
+          const isHighlighted = hoveredSpotId ? isHovered : isSelected
           return (
-            <div key={spot.id} className={`absolute group ${isPinned ? 'z-[60]' : ''}`} style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height }}>
-              <div className="absolute inset-0 flex items-center justify-center z-10">
+            <div key={spot.id} className={`absolute group ${isHighlighted ? 'z-30' : ''}`} style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height }}>
+              <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                 <div
-                  className={`relative w-4 h-4 rounded-full border-2 border-white shadow-lg transition-all duration-200 pointer-events-none flex items-center justify-center ${
-                    isPinned ? 'opacity-100 scale-125 ring-2 ring-offset-1 ring-blue-400' : 'opacity-80 group-hover:opacity-100 group-hover:scale-125'
+                  className={`relative w-4 h-4 rounded-full border-2 border-white shadow-lg transition-all duration-200 flex items-center justify-center ${
+                    isHighlighted ? 'opacity-100 scale-125 ring-2 ring-offset-1 ring-vend-mint-600' : 'opacity-80'
                   }`}
                   style={{ backgroundColor: dotColor, borderColor: 'white' }}
                 >
@@ -531,80 +570,33 @@ function FloorMapView() {
                 data-spot-id={spot.id}
                 type="button"
                 tabIndex={-1}
-                className="absolute inset-0 cursor-pointer transition-all duration-200 border-2 rounded pointer-events-auto focus:outline-none"
+                className="absolute inset-0 cursor-pointer transition-all duration-200 rounded pointer-events-auto focus:outline-none"
                 style={{
-                  backgroundColor: isPinned ? `${dotColor}20` : 'transparent',
-                  borderColor: isPinned ? dotColor : 'transparent',
+                  backgroundColor: isHighlighted ? `${highlightColor}30` : 'transparent',
+                  boxShadow: isHighlighted ? `0 0 0 3px ${highlightColor}, 0 0 14px ${highlightColor}99` : 'none',
+                  zIndex: isHighlighted ? 30 : 1,
                 }}
                 onMouseDown={(e) => {
-                  // Prevent browser focus-scroll that shifts the map when selecting bottom spots
                   e.preventDefault()
                 }}
                 onClick={() => handleSpotClick(spot)}
-                onMouseEnter={(e) => {
-                  if (isPinned) return
-                  e.currentTarget.style.borderColor = dotColor
-                  e.currentTarget.style.backgroundColor = `${dotColor}20`
-                }}
-                onMouseLeave={(e) => {
-                  if (isPinned) return
-                  e.currentTarget.style.borderColor = 'transparent'
-                  e.currentTarget.style.backgroundColor = 'transparent'
-                }}
+                onMouseEnter={() => setHoveredSpotId(spot.id)}
+                onMouseLeave={() => setHoveredSpotId(null)}
               />
-              {/* Tooltip — hover only, or pinned from Tenant Directory click */}
-              <div className={`absolute top-full left-1/2 transform -translate-x-1/2 mt-2 transition-opacity pointer-events-none z-50 ${
-                isPinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-              }`}>
-                <div className="bg-gray-900 text-white text-xs rounded-lg shadow-xl min-w-[200px]">
-                  <div className="bg-gray-800 px-3 py-2 rounded-t-lg font-bold text-center border-b border-gray-700">{spot.spotNumber}</div>
-                  <div className="p-3">
-                    {spot.spotTypeConfig && (
-                      <div className="flex items-center justify-between mb-2 pb-2 border-b border-gray-700">
-                        <span className="text-gray-400">Type:</span>
-                        <span className="font-medium" style={{ color: spot.spotTypeConfig.color }}>{spot.spotTypeConfig.name}</span>
-                      </div>
-                    )}
-                    <div className="mb-2 pb-2 border-b border-gray-700">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-gray-400">Status:</span>
-                        {occupancy.type === null ? (
-                          <span className="text-green-400 font-medium">
-                            {spot.spotTypeConfig?.id === 'reserved' ? 'Reserved' : 'Available'}
-                          </span>
-                        ) : isOtherCompany(spot.companyName) ? (
-                          <span className="text-red-400 font-medium">Reserved</span>
-                        ) : (
-                          <span className={occupancy.type === 'company' ? 'text-blue-400' : 'text-purple-400'}>Occupied</span>
-                        )}
-                      </div>
-                      {occupancy.type !== null && !isOtherCompany(spot.companyName) && (
-                        <div className="text-xs mt-1">
-                          {occupancy.type === 'company' ? (
-                            <>
-                              <div className="text-blue-300 truncate">
-                                Company: {spot.companyName}
-                              </div>
-                              {spot.parkerName && (
-                                <div className="text-purple-300">
-                                  {isAdmin ? `Parker: ${spot.parkerName}` : 'Parker: Occupied'}
-                                </div>
-                              )}
-                            </>
-                          ) : (
-                            <div className="text-purple-300">
-                              {isAdmin && spot.parkerName ? `Parker: ${spot.parkerName}` : 'Parker: Occupied'}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-xs text-center text-gray-500 italic">
-                      {isPinned ? 'From tenant directory' : 'Click for more details'}
-                    </div>
+              {isHighlighted && (
+                <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1.5 pointer-events-none flex flex-col items-center z-30">
+                  <div className="bg-vend-mint text-vend-black text-xs font-bold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap">
+                    {spot.spotNumber}
                   </div>
+                  <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-vend-mint -mt-px" />
                 </div>
-              </div>
+              )}
+              {isHighlighted && (
+                <div
+                  className={`absolute inset-0 rounded pointer-events-none ${isSelected && !hoveredSpotId ? 'animate-pulse' : ''}`}
+                  style={{ boxShadow: `inset 0 0 0 2px ${highlightColor}` }}
+                />
+              )}
             </div>
           )
         })}
@@ -625,8 +617,8 @@ function FloorMapView() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 lg:py-5">
+        <div className="mb-4">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-headline text-vend-black tracking-tight">{currentFloor.label} — Parking Spaces</h1>
@@ -659,7 +651,7 @@ function FloorMapView() {
 
         <div className="flex gap-4">
           <div ref={containerRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative flex-1">
-            <div className="w-full h-[900px] relative overflow-hidden">
+            <div className="w-full h-[960px] lg:h-[calc(100vh-180px)] relative overflow-hidden">
               {error && !loading && (
                 <div className="text-center p-8 absolute inset-0 flex items-center justify-center bg-white">
                   <div>
@@ -670,38 +662,63 @@ function FloorMapView() {
                 </div>
               )}
               {!loading && !error && svgContent && (
-                <div className="relative w-full h-full">
-                  <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-white">
-                    <div ref={svgRef} className="w-full h-full max-w-full max-h-full" dangerouslySetInnerHTML={{ __html: svgContent }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }} />
-                  </div>
+                <div ref={mapStageRef} className="relative w-full h-full overflow-hidden bg-white">
+                  <div
+                    ref={svgRef}
+                    className="absolute [&>svg]:h-full [&>svg]:w-full"
+                    style={mapLayout ? {
+                      left: mapLayout.offsetX,
+                      top: mapLayout.offsetY,
+                      width: mapLayout.renderedWidth,
+                      height: mapLayout.renderedHeight,
+                    } : {
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                    }}
+                  />
                   {renderInteractiveOverlay()}
                 </div>
               )}
             </div>
 
             {!loading && !error && (
-              <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-md text-xs z-10 w-[280px] max-h-[calc(900px-1rem)] border border-gray-400 flex flex-col overflow-hidden">
-                <div className="p-3 border-b border-gray-400 flex-shrink-0">
-                  <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
-                  <p className="text-gray-500 text-xs mt-1">Total: {spots.length} spaces</p>
+              <>
+                <div className="absolute top-2 left-2 z-10 w-[280px] max-h-[calc(100%-1rem)] overflow-hidden rounded-lg border border-gray-400 bg-white/95 text-xs shadow-md backdrop-blur-sm flex flex-col">
+                  <div className="flex-shrink-0 border-b border-gray-400 p-3">
+                    <h3 className="font-semibold text-gray-800">Space Type Breakdown</h3>
+                    <p className="mt-1 text-xs text-gray-500">Total: {spots.length} spaces</p>
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    {renderBreakdown()}
+                  </div>
                 </div>
-                <div className="overflow-y-auto flex-1 min-h-0">
-                  {renderBreakdown()}
+
+                <div className="absolute top-2 right-2 z-10 w-[280px] max-h-[calc(100%-1rem)] overflow-hidden rounded-lg border border-gray-400 bg-white/95 text-xs shadow-md backdrop-blur-sm flex flex-col">
                   {(() => {
                     const companyList = getCompanyList()
-                    if (companyList.length === 0) return null
-                    return (
-                      <div className="border-t border-gray-400">
-                        <div className="p-3 border-b border-gray-400">
+                    if (companyList.length === 0) {
+                      return (
+                        <div className="p-3">
                           <h3 className="font-semibold text-gray-800">🏢 Tenant Directory</h3>
-                          <p className="text-gray-500 text-xs mt-1">
+                          <p className="mt-2 text-xs text-gray-500">No companies on this floor.</p>
+                        </div>
+                      )
+                    }
+                    return (
+                      <>
+                        <div className="flex-shrink-0 border-b border-gray-400 p-3">
+                          <h3 className="font-semibold text-gray-800">🏢 Tenant Directory</h3>
+                          <p className="mt-1 text-xs text-gray-500">
                             {tenantCompany && !isAdmin
                               ? `${companyList[0]?.[1]?.length || 0} spaces`
                               : `${companyList.length} companies`}
                           </p>
                         </div>
-                        {renderDirectory()}
-                      </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                          {renderDirectory()}
+                        </div>
+                      </>
                     )
                   })()}
                   {selectedSpot && (
@@ -710,7 +727,7 @@ function FloorMapView() {
                     </div>
                   )}
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>

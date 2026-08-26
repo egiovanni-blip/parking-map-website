@@ -6,6 +6,13 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { FLOORS } from '@/lib/constants'
+import {
+  applyFloorMapViewBoxCrop,
+  getFloorMapZoom,
+  getSvgMeetLayout,
+  getSvgViewBoxSize,
+  spotToOverlayPercent,
+} from '@/lib/svg-map-layout'
 
 // Spot type configurations used for border color display
 const SPOT_TYPES = [
@@ -39,10 +46,16 @@ export default function AdminFloorPage() {
   const [parkerName, setParkerName] = useState('')
   const [spotNumber, setSpotNumber] = useState('')
   const [spotType, setSpotType] = useState('regular')
-  const [containerRect, setContainerRect] = useState(null)
+  const [mapLayout, setMapLayout] = useState(null)
   const [isInitialDetectionDone, setIsInitialDetectionDone] = useState(false)
   const svgRef = useRef(null)
+  const mapStageRef = useRef(null)
   const containerRef = useRef(null)
+
+  useEffect(() => {
+    if (!svgRef.current) return
+    svgRef.current.innerHTML = svgContent || ''
+  }, [floorId, svgContent])
 
   // Load SVG
   useEffect(() => {
@@ -188,7 +201,7 @@ export default function AdminFloorPage() {
       const svgElement = svgRef.current?.querySelector('svg')
       if (!svgElement) return
 
-      updateContainerRect();
+      updateMapLayout();
       
       console.log('🚀 ===== PARKING SPOT MANAGEMENT FLOW =====');
       
@@ -358,38 +371,32 @@ export default function AdminFloorPage() {
 
   // ==================== UTILITY FUNCTIONS ====================
 
-  const updateContainerRect = () => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      setContainerRect({
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height
-      });
-    }
-  };
+  const updateMapLayout = () => {
+    const stage = mapStageRef.current
+    if (!stage) return
+    const svgElement = stage.querySelector('svg')
+    if (!svgElement) return
+
+    const crop = applyFloorMapViewBoxCrop(svgElement, floorId)
+    const { width: vbWidth, height: vbHeight } = getSvgViewBoxSize(svgElement)
+    const { width: containerWidth, height: containerHeight } = stage.getBoundingClientRect()
+    setMapLayout(getSvgMeetLayout(vbWidth, vbHeight, containerWidth, containerHeight, {
+      cropX: crop?.x ?? 0,
+      cropY: crop?.y ?? 0,
+      fit: 'meet',
+      zoom: getFloorMapZoom(floorId),
+    }))
+  }
 
   useEffect(() => {
-    window.addEventListener('resize', updateContainerRect);
-    return () => window.removeEventListener('resize', updateContainerRect);
-  }, []);
+    if (!mapStageRef.current) return
+    const observer = new ResizeObserver(() => updateMapLayout())
+    observer.observe(mapStageRef.current)
+    updateMapLayout()
+    return () => observer.disconnect()
+  }, [svgContent, loading, error, spots.length])
 
-  const calculateSpotPosition = (spot) => {
-    if (!containerRect || !spot) return null;
-    
-    const left = (spot.screenX - containerRect.left);
-    const top = (spot.screenY - containerRect.top);
-    const width = spot.screenWidth;
-    const height = spot.screenHeight;
-    
-    return {
-      left: `${(left / containerRect.width) * 100}%`,
-      top: `${(top / containerRect.height) * 100}%`,
-      width: `${(width / containerRect.width) * 100}%`,
-      height: `${(height / containerRect.height) * 100}%`
-    };
-  };
+  const calculateSpotPosition = (spot) => spotToOverlayPercent(spot, mapLayout)
 
   // ==================== NAVIGATION ====================
 
@@ -406,6 +413,9 @@ export default function AdminFloorPage() {
   }
 
   // ==================== SPOT INTERACTIONS ====================
+
+  const isSameSpot = (a, b) =>
+    a && b && (a.id === b.id || (a.dbId != null && a.dbId === b.dbId))
 
   const handleSpotClick = (spot) => {
     setSelectedSpot(spot);
@@ -560,12 +570,14 @@ export default function AdminFloorPage() {
   // ==================== RENDER FUNCTIONS ====================
 
   const renderInteractiveOverlay = () => {
-    if (!svgContent || spots.length === 0 || !containerRect) return null;
+    if (!svgContent || spots.length === 0 || !mapLayout) return null;
+    const highlightColor = '#00CCBE';
     return (
       <div className="absolute inset-0 pointer-events-none">
         {spots.map((spot) => {
           const pos = calculateSpotPosition(spot);
           if (!pos) return null;
+          const isSelected = isSameSpot(selectedSpot, spot);
           const isOccupied = spot.companyName !== 'Unassigned';
           const spotTypeConfig = spot.spotTypeConfig || SPOT_TYPES[0];
           const borderColor = isOccupied ? '#3b82f6' : spotTypeConfig.color;
@@ -575,19 +587,51 @@ export default function AdminFloorPage() {
           return (
             <div
               key={spot.dbId || spot.id}
-              className="absolute cursor-pointer transition-all duration-200 rounded pointer-events-auto group"
-              style={{ left: pos.left, top: pos.top, width: pos.width, height: pos.height, backgroundColor: 'transparent', zIndex: 1 }}
+              className={`absolute cursor-pointer transition-all duration-200 rounded pointer-events-auto group ${isSelected ? 'z-30' : ''}`}
+              style={{
+                left: pos.left,
+                top: pos.top,
+                width: pos.width,
+                height: pos.height,
+                backgroundColor: isSelected ? `${highlightColor}30` : 'transparent',
+                boxShadow: isSelected ? `0 0 0 3px ${highlightColor}, 0 0 14px ${highlightColor}99` : 'none',
+                zIndex: isSelected ? 30 : 1,
+              }}
               onClick={() => handleSpotClick(spot)}
-              onMouseEnter={(e) => { e.currentTarget.style.zIndex = '10'; e.currentTarget.style.boxShadow = `0 0 0 2px ${borderColor}`; }}
-              onMouseLeave={(e) => { e.currentTarget.style.zIndex = '1'; e.currentTarget.style.boxShadow = 'none'; }}
+              onMouseEnter={(e) => {
+                if (isSelected) return;
+                e.currentTarget.style.zIndex = '10';
+                e.currentTarget.style.boxShadow = `0 0 0 2px ${highlightColor}`;
+              }}
+              onMouseLeave={(e) => {
+                if (isSelected) return;
+                e.currentTarget.style.zIndex = '1';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
               title={tooltipContent}
             >
+              {isSelected && (
+                <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1.5 pointer-events-none flex flex-col items-center">
+                  <div className="bg-vend-mint text-vend-black text-xs font-bold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap">
+                    {spot.spotNumber}
+                  </div>
+                  <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-vend-mint -mt-px" />
+                </div>
+              )}
+              {isSelected && (
+                <div
+                  className="absolute inset-0 rounded pointer-events-none animate-pulse"
+                  style={{ boxShadow: `inset 0 0 0 2px ${highlightColor}` }}
+                />
+              )}
               {isOccupied && <div className="absolute text-sm">🏢</div>}
               {!isOccupied && spot.isFromDatabase && <div className="absolute text-sm">💾</div>}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className={`text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isOccupied ? 'bg-blue-600 text-white' : 'bg-black/70 text-white'}`}>
-                  {spot.spotNumber}
-                </div>
+                {!isSelected && (
+                  <div className={`text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isOccupied ? 'bg-blue-600 text-white' : 'bg-black/70 text-white'}`}>
+                    {spot.spotNumber}
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -599,9 +643,8 @@ export default function AdminFloorPage() {
   // ==================== MAIN RENDER ====================
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6">
+    <>
+      <div className="mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
@@ -651,9 +694,10 @@ export default function AdminFloorPage() {
           </div>
         </div>
 
-        {/* SVG Container */}
-        <div ref={containerRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-          <div className="w-full h-[900px] flex items-center justify-center bg-white relative">
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+        {/* Map */}
+        <div ref={containerRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden flex-1 min-w-0">
+          <div className="w-full h-[960px] lg:h-[calc(100vh-180px)] bg-white relative overflow-hidden">
             {loading && (
               <div className="text-center absolute inset-0 flex items-center justify-center bg-white z-10">
                 <div>
@@ -675,37 +719,94 @@ export default function AdminFloorPage() {
             )}
 
             {!loading && !error && svgContent && (
-              <div ref={svgRef} className="relative w-full h-full overflow-hidden">
-                <div className="absolute inset-0 w-full h-full flex items-center justify-center p-4 bg-white">
-                  <div 
-                    className="w-full h-full max-w-full max-h-full"
-                    dangerouslySetInnerHTML={{ __html: svgContent }}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  />
-                </div>
+              <div ref={mapStageRef} className="relative w-full h-full overflow-hidden bg-white">
+                <div
+                  ref={svgRef}
+                  className="absolute [&>svg]:h-full [&>svg]:w-full"
+                  style={mapLayout ? {
+                    left: mapLayout.offsetX,
+                    top: mapLayout.offsetY,
+                    width: mapLayout.renderedWidth,
+                    height: mapLayout.renderedHeight,
+                  } : {
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                  }}
+                />
                 {renderInteractiveOverlay()}
               </div>
             )}
           </div>
         </div>
 
-        {/* Selected Spot Panel */}
+        {/* Right sidebar — spot list + edit panel */}
         {!loading && !error && (
-          <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              {selectedSpot ? (
-                <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium text-gray-900">Edit Parking Spot</h3>
-                    <button
-                      onClick={() => { setSelectedSpot(null); setEditingCompany(false); setEditingParker(false); setEditingSpotNumber(false); setEditingSpotType(false); }}
-                      className="text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      ✕ Close
-                    </button>
+          <div className="w-full lg:w-[340px] flex-shrink-0 flex flex-col gap-4 lg:max-h-[calc(100vh-180px)]">
+            <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col min-h-0 flex-1">
+              <div className="flex items-center justify-between mb-4 flex-shrink-0">
+                <h3 className="font-medium text-gray-900">Parking Spots ({spots.length})</h3>
+                <div className="text-xs text-gray-500 text-right">
+                  <div className="text-blue-600">{spots.filter(s => s.companyName !== 'Unassigned').length} occupied</div>
+                  <div className="text-green-600">{spots.filter(s => s.isFromDatabase).length} in DB</div>
+                </div>
+              </div>
+
+              {spots.length > 0 ? (
+                <div className="grid grid-cols-1 gap-2 overflow-y-auto min-h-0 flex-1 p-1">
+                    {spots.map((spot) => {
+                      const isOccupied = spot.companyName !== 'Unassigned';
+                      const spotTypeConfig = spot.spotTypeConfig || SPOT_TYPES[0];
+                      return (
+                        <div
+                          key={spot.dbId || spot.id}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all ${isSameSpot(selectedSpot, spot) ? 'ring-2 ring-blue-500 border-blue-300 bg-blue-50' : isOccupied ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300 bg-gray-50/30'}`}
+                          style={{ borderLeftColor: isOccupied ? '#3b82f6' : spotTypeConfig.color, borderLeftWidth: '4px' }}
+                          onClick={() => handleSpotClick(spot)}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="text-xl">{isOccupied ? '🏢' : (spot.isFromDatabase ? '💾' : '🚗')}</div>
+                              <span className={`text-lg font-bold ${isOccupied ? 'text-blue-700' : 'text-gray-700'}`}>{spot.spotNumber}</span>
+                            </div>
+                            {spot.isFromDatabase && <div className="text-xs text-green-600">✓</div>}
+                          </div>
+                          <div className="text-sm font-medium text-gray-900 truncate mb-1" title={spot.companyName}>{spot.companyName}</div>
+                          <div className="text-xs text-gray-600 mb-1 flex items-center gap-1">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: spotTypeConfig.color }} />
+                            {spotTypeConfig.name}
+                          </div>
+                          {spot.parkerName ? (
+                            <div className="text-xs text-gray-500 truncate" title={spot.parkerName}>👤 {spot.parkerName}</div>
+                          ) : (
+                            <div className="text-xs text-gray-500 italic">{isOccupied ? 'Company spot' : 'Available'}</div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                  
-                  <div className="space-y-4">
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="mb-4">🚗</div>
+                    <p>No yellow parking spots detected.</p>
+                    <p className="text-sm mt-1">SVG loaded, but no yellow-colored spots found.</p>
+                  </div>
+                )}
+            </div>
+
+            {selectedSpot ? (
+              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex-shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium text-gray-900">Edit Parking Spot</h3>
+                  <button
+                    onClick={() => { setSelectedSpot(null); setEditingCompany(false); setEditingParker(false); setEditingSpotNumber(false); setEditingSpotType(false); }}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+
+                <div className="space-y-4 max-h-[360px] overflow-y-auto pr-1">
                     {/* Company Name */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
@@ -807,73 +908,17 @@ export default function AdminFloorPage() {
                         </div>
                       )}
                     </div>
-                  </div>
                 </div>
-              ) : (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-                  <div className="text-gray-400 mb-2">👆</div>
-                  <p className="text-sm text-gray-600">Click on any yellow parking spot to edit</p>
-                </div>
-              )}
-            </div>
-
-            {/* Spot List */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-gray-900">Parking Spots ({spots.length})</h3>
-                  <div className="text-sm text-gray-500">
-                    <span className="text-blue-600">{spots.filter(s => s.companyName !== 'Unassigned').length} occupied</span>
-                    {' • '}
-                    <span className="text-green-600">{spots.filter(s => s.isFromDatabase).length} in DB</span>
-                  </div>
-                </div>
-                
-                {spots.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto p-1">
-                    {spots.map((spot) => {
-                      const isOccupied = spot.companyName !== 'Unassigned';
-                      const spotTypeConfig = spot.spotTypeConfig || SPOT_TYPES[0];
-                      return (
-                        <div
-                          key={spot.dbId || spot.id}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedSpot?.id === spot.id ? 'ring-2 ring-blue-500 border-blue-300 bg-blue-50' : isOccupied ? 'border-blue-300 bg-blue-50/30' : 'border-gray-300 bg-gray-50/30'}`}
-                          style={{ borderLeftColor: isOccupied ? '#3b82f6' : spotTypeConfig.color, borderLeftWidth: '4px' }}
-                          onClick={() => handleSpotClick(spot)}
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="text-xl">{isOccupied ? '🏢' : (spot.isFromDatabase ? '💾' : '🚗')}</div>
-                              <span className={`text-lg font-bold ${isOccupied ? 'text-blue-700' : 'text-gray-700'}`}>{spot.spotNumber}</span>
-                            </div>
-                            {spot.isFromDatabase && <div className="text-xs text-green-600">✓</div>}
-                          </div>
-                          <div className="text-sm font-medium text-gray-900 truncate mb-1" title={spot.companyName}>{spot.companyName}</div>
-                          <div className="text-xs text-gray-600 mb-1 flex items-center gap-1">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: spotTypeConfig.color }} />
-                            {spotTypeConfig.name}
-                          </div>
-                          {spot.parkerName ? (
-                            <div className="text-xs text-gray-500 truncate" title={spot.parkerName}>👤 {spot.parkerName}</div>
-                          ) : (
-                            <div className="text-xs text-gray-500 italic">{isOccupied ? 'Company spot' : 'Available'}</div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <div className="mb-4">🚗</div>
-                    <p>No yellow parking spots detected.</p>
-                    <p className="text-sm mt-1">SVG loaded, but no yellow-colored spots found.</p>
-                  </div>
-                )}
               </div>
-            </div>
+            ) : (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center flex-shrink-0">
+                <div className="text-gray-400 mb-2">👆</div>
+                <p className="text-sm text-gray-600">Click on any yellow parking spot to edit</p>
+              </div>
+            )}
           </div>
         )}
-      </div>
-    </div>
+        </div>
+    </>
   )
 }
