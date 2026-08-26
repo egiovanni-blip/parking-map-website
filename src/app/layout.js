@@ -20,7 +20,7 @@ const manrope = Manrope({
 
 export const metadata = {
   title: 'The Republic | Parking Map',
-  description: 'Find and request parking spaces — fast, clear, and effortless.',
+  description: 'Sign in. Find your space. Friction-free parking for tenants at The Republic.',
 }
 
 export const viewport = {

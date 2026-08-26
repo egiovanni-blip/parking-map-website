@@ -27,48 +27,96 @@ export default function TenantContactsPage() {
       .from('tenant_contacts')
       .select('*')
       .order('company_name')
-    if (!error) setContacts(data || [])
+    if (!error) {
+      setContacts(data || [])
+      // Seed dropdown from existing contacts immediately so it's never empty
+      // while the full parking_spots list loads.
+      setCompanyOptions((prev) => {
+        if (prev.length > 0) return prev
+        const fromContacts = [
+          ...new Set(
+            (data || [])
+              .map((c) => c.company_name?.trim())
+              .filter(Boolean)
+          ),
+        ].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+        return fromContacts
+      })
+    }
     setLoading(false)
   }
 
-  const loadCompanyOptions = async () => {
-    // Paginate — Supabase caps each response at 1000 rows
+  const loadCompanyOptionsFromClient = async () => {
     const spots = []
     let from = 0
     const pageSize = 1000
     while (true) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('parking_spots')
         .select('display_label, original_label')
         .not('display_label', 'is', null)
         .not('original_label', 'is', null)
         .range(from, from + pageSize - 1)
+      if (error) {
+        console.error('Client company load error:', error.message)
+        break
+      }
       spots.push(...(data || []))
       if (!data || data.length < pageSize) break
       from += pageSize
     }
 
     const placeholderLabels = new Set(['unassigned', 'unlabeled'])
-
-    const fromSpots = spots
-      .map(s => s.display_label?.trim())
-      .filter(name => name && !placeholderLabels.has(name.toLowerCase()))
-
-    // Keep companies already in tenant_contacts only if they also have real allocated spots
-    const allocatedCompanies = new Set(fromSpots.map(n => n.toLowerCase()))
-
-    const { data: existing } = await supabase
-      .from('tenant_contacts')
-      .select('company_name')
-
-    const fromContacts = (existing || [])
-      .map(c => c.company_name?.trim())
-      .filter(name => name && allocatedCompanies.has(name.toLowerCase()))
-
-    const merged = [...new Set([...fromSpots, ...fromContacts])].sort((a, b) =>
+    const byLower = new Map()
+    for (const spot of spots) {
+      const name = spot.display_label?.trim()
+      if (!name) continue
+      const lower = name.toLowerCase()
+      if (placeholderLabels.has(lower)) continue
+      if (!byLower.has(lower)) byLower.set(lower, name)
+    }
+    return [...byLower.values()].sort((a, b) =>
       a.toLowerCase().localeCompare(b.toLowerCase())
     )
-    setCompanyOptions(merged)
+  }
+
+  const loadCompanyOptions = async () => {
+    // Primary: browser supabase (same access as the floor maps)
+    try {
+      const companies = await loadCompanyOptionsFromClient()
+      if (companies.length) {
+        setCompanyOptions(companies)
+        return
+      }
+    } catch (err) {
+      console.error('Failed to load company options from client:', err)
+    }
+
+    // Secondary: admin API with bearer token (service role)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const headers = {}
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`
+      }
+
+      const res = await fetch('/api/admin/tenant-companies', {
+        credentials: 'same-origin',
+        headers,
+      })
+      if (res.ok) {
+        const { companies } = await res.json()
+        if (companies?.length) {
+          setCompanyOptions(companies)
+          return
+        }
+      } else {
+        const body = await res.json().catch(() => ({}))
+        console.error('Failed to load company options via API:', res.status, body)
+      }
+    } catch (err) {
+      console.error('Failed to load company options via API:', err)
+    }
   }
 
   const resetForm = () => {

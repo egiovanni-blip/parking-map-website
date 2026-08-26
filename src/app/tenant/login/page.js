@@ -60,10 +60,10 @@ function TenantLoginForm() {
       )}
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+        <label className="block text-sm font-semibold text-vend-black mb-1">Email Address</label>
         <input
           type="email"
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+          className="w-full border border-vend-concrete rounded-lg px-3 py-2 text-sm text-vend-black placeholder:text-vend-slate/50 focus:outline-none focus:ring-2 focus:ring-vend-black"
           placeholder="you@company.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -72,11 +72,11 @@ function TenantLoginForm() {
       </div>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+        <label className="block text-sm font-semibold text-vend-black mb-1">Password</label>
         <div className="relative">
           <input
             type={showPassword ? 'text' : 'password'}
-            className="w-full border border-gray-300 rounded-lg pl-3 pr-10 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="w-full border border-vend-concrete rounded-lg pl-3 pr-10 py-2 text-sm text-vend-black placeholder:text-vend-slate/50 focus:outline-none focus:ring-2 focus:ring-vend-black"
             placeholder="Enter your password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -85,45 +85,45 @@ function TenantLoginForm() {
           <button
             type="button"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-800 rounded"
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-vend-slate hover:text-vend-black rounded"
             onClick={() => setShowPassword((v) => !v)}
           >
             <span className="text-base leading-none" aria-hidden>👁</span>
           </button>
         </div>
         <div className="mt-1 text-right">
-          <Link href="/tenant/set-password" className="text-xs text-blue-600 hover:underline">
+          <Link href="/tenant/set-password" className="text-xs text-vend-slate hover:text-vend-black hover:underline underline-offset-2">
             Forgot password?
           </Link>
         </div>
-        {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        {error && <p className="text-vend-red text-sm mt-2">{error}</p>}
       </div>
 
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
+        className="w-full px-4 py-2.5 vend-btn-primary rounded-lg text-sm disabled:opacity-50"
       >
-        {loading ? 'Signing in...' : 'Sign In →'}
+        {loading ? 'Signing in...' : 'Sign in →'}
       </button>
 
       <div className="mt-4 text-center space-y-2">
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-vend-slate">
           First time?{' '}
-          <Link href="/tenant/set-password" className="text-blue-600 hover:underline">
+          <Link href="/tenant/set-password" className="text-vend-black font-semibold hover:underline underline-offset-2">
             Set your password
           </Link>
         </p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-vend-slate/80">
           Contact your property manager if you need access.
         </p>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-100 text-center">
-        <p className="text-xs text-gray-400">
+      <div className="mt-4 pt-4 border-t border-vend-concrete text-center">
+        <p className="text-xs text-vend-slate">
           Are you an admin?{' '}
-          <Link href="/login" className="text-gray-500 hover:text-gray-700 hover:underline">
-            Admin Login →
+          <Link href="/login" className="text-vend-black font-semibold hover:underline underline-offset-2">
+            Admin login →
           </Link>
         </p>
       </div>
@@ -135,12 +135,13 @@ export default function TenantLoginPage() {
   return (
     <AuthPageBackdrop>
       <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-vend-concrete/40">
           <div className="bg-vend-black px-6 py-5">
-            <h1 className="text-vend-white font-headline text-xl tracking-tight">Parking Map Access</h1>
+            <p className="text-vend-mint text-xs font-semibold tracking-wide uppercase mb-1">The Republic</p>
+            <h1 className="text-vend-white font-headline text-xl tracking-tight">Tenant access</h1>
             <p className="text-vend-concrete text-sm mt-1 font-subhead">Sign in. See your spaces.</p>
           </div>
-          <Suspense fallback={<div className="p-6 text-center text-gray-500">Loading...</div>}>
+          <Suspense fallback={<div className="p-6 text-center text-vend-slate">Loading...</div>}>
             <TenantLoginForm />
           </Suspense>
         </div>

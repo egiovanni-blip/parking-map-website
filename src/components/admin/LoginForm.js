@@ -33,19 +33,20 @@ export default function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-transparent p-4">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-3xl font-bold text-gray-900 text-center">
-            Admin Login
+      <div className="max-w-md w-full bg-vend-white rounded-2xl shadow-xl overflow-hidden">
+        <div className="bg-vend-black px-6 py-5">
+          <p className="text-vend-mint text-xs font-semibold tracking-wide uppercase mb-1">The Republic</p>
+          <h2 className="text-vend-white font-headline text-xl tracking-tight">
+            Admin login
           </h2>
-          <p className="mt-2 text-gray-600 text-center">
-            Sign in with your email and password
+          <p className="text-vend-concrete text-sm mt-1 font-subhead">
+            Sign in. Manage the garage.
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-vend-black mb-2">
               Email
             </label>
             <input
@@ -53,19 +54,19 @@ export default function LoginForm() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-vend-concrete text-vend-black rounded-lg focus:outline-none focus:ring-2 focus:ring-vend-black focus:border-vend-black placeholder:text-vend-slate/50"
               placeholder="admin@example.com"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-semibold text-vend-black">
                 Password
               </label>
               <Link
                 href="/admin/set-password"
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-vend-slate hover:text-vend-black underline-offset-2 hover:underline"
               >
                 Forgot password?
               </Link>
@@ -76,13 +77,13 @@ export default function LoginForm() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-12"
+                className="w-full px-4 py-3 border border-vend-concrete text-vend-black rounded-lg focus:outline-none focus:ring-2 focus:ring-vend-black focus:border-vend-black placeholder:text-vend-slate/50 pr-12"
                 placeholder="Enter your password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+                className="absolute inset-y-0 right-3 flex items-center text-vend-slate hover:text-vend-black"
                 tabIndex={-1}
               >
                 {showPassword ? (
@@ -100,7 +101,7 @@ export default function LoginForm() {
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200 text-sm">
+            <div className="p-3 rounded-lg bg-[#FFD6D7] text-[#B12829] border border-[#FF9798] text-sm">
               {error}
             </div>
           )}
@@ -108,19 +109,19 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 vend-btn-primary rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Signing in...' : 'Sign in'}
           </button>
 
-          <div className="text-center text-sm text-gray-500 space-y-2">
+          <div className="text-center text-sm text-vend-slate space-y-2">
             <p>
               First time or invited?{' '}
-              <Link href="/admin/set-password" className="text-blue-600 hover:underline">
+              <Link href="/admin/set-password" className="text-vend-black font-semibold hover:underline underline-offset-2">
                 Set your password
               </Link>
             </p>
-            <p className="text-xs">Contact the super admin if you need access.</p>
+            <p className="text-xs text-vend-slate/80">Contact the super admin if you need access.</p>
           </div>
         </form>
       </div>

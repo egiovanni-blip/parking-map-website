@@ -30,6 +30,9 @@ export async function middleware(request) {
   // Always public routes
   if (alwaysPublic.some(path => pathname.startsWith(path))) return NextResponse.next()
 
+  // Admin API routes enforce their own auth and must return JSON (not HTML redirects)
+  if (pathname.startsWith('/api/admin')) return NextResponse.next()
+
   const allCookies = request.cookies.getAll()
   const hasSupabaseAuth = allCookies.some(c => {
     const name = c.name.toLowerCase()

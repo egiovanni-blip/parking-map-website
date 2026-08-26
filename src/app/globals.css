@@ -1,12 +1,25 @@
 @import "tailwindcss";
 
-/* ── Vend brand tokens ─────────────────────────────────────────── */
+/* ── Vend brand tokens (product: The Republic) ─────────────────── */
 :root {
+  /* Primaries */
   --vend-black: #111114;
   --vend-white: #FDFDFD;
   --vend-mint: #00FFE0;
+
+  /* Neutrals */
   --vend-slate: #4A4A50;
   --vend-concrete: #D5D3D2;
+  --vend-warm-100: #F0EFEE;
+  --vend-warm-200: #E4E3E2;
+  --vend-warm-300: #D5D3D2;
+
+  /* Vision Mint tints / shades */
+  --vend-mint-200: #99FFF1;
+  --vend-mint-600: #00CCBE;
+  --vend-mint-700: #009F95;
+
+  /* Functional accents */
   --vend-red: #FF4D4F;
   --vend-yellow: #FFC24B;
   --vend-green: #14D5A3;
@@ -20,12 +33,16 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* Brand palette as Tailwind colors */
   --color-vend-black: #111114;
   --color-vend-white: #FDFDFD;
   --color-vend-mint: #00FFE0;
+  --color-vend-mint-200: #99FFF1;
+  --color-vend-mint-600: #00CCBE;
+  --color-vend-mint-700: #009F95;
   --color-vend-slate: #4A4A50;
   --color-vend-concrete: #D5D3D2;
+  --color-vend-warm-100: #F0EFEE;
+  --color-vend-warm-200: #E4E3E2;
   --color-vend-red: #FF4D4F;
   --color-vend-yellow: #FFC24B;
   --color-vend-green: #14D5A3;
@@ -33,10 +50,10 @@
 
   /* Map common UI grays to Vend neutrals (layout-safe; does not touch map spot hex colors) */
   --color-gray-50: #FDFDFD;
-  --color-gray-100: #F5F4F3;
+  --color-gray-100: #F0EFEE;
   --color-gray-200: #D5D3D2;
-  --color-gray-300: #C4C2C1;
-  --color-gray-400: #8B8B90;
+  --color-gray-300: #C6C6CA;
+  --color-gray-400: #99999E;
   --color-gray-500: #4A4A50;
   --color-gray-600: #3A3A40;
   --color-gray-700: #2A2A2E;
@@ -46,13 +63,16 @@
   /* Accent remaps for chrome only — map dots use inline hex, unaffected */
   --color-blue-500: #3E8BFF;
   --color-blue-600: #3E8BFF;
-  --color-blue-700: #2F6FD1;
+  --color-blue-700: #316FD1;
   --color-red-500: #FF4D4F;
   --color-red-600: #FF4D4F;
-  --color-red-700: #E03E40;
+  --color-red-700: #D93738;
   --color-green-500: #14D5A3;
   --color-green-600: #14D5A3;
-  --color-green-700: #0FB089;
+  --color-green-700: #0EB28A;
+  --color-amber-50: #FFF0D1;
+  --color-amber-200: #FFE18F;
+  --color-amber-800: #A7771F;
 
   --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   --font-headline: var(--font-space-grotesk), var(--font-manrope), sans-serif;
@@ -73,6 +93,32 @@ h1, h2, .font-headline {
 h3, h4, .font-subhead {
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   font-weight: 800;
+}
+
+/* Vend focus / CTA helpers — mint only on dark surfaces for contrast */
+.vend-focus {
+  outline: none;
+}
+
+.vend-focus:focus-visible {
+  box-shadow: 0 0 0 2px var(--vend-white), 0 0 0 4px var(--vend-black);
+}
+
+.vend-btn-primary {
+  background: var(--vend-black);
+  color: var(--vend-white);
+  font-family: var(--font-manrope), sans-serif;
+  font-weight: 600;
+  transition: background-color 0.15s ease;
+}
+
+.vend-btn-primary:hover {
+  background: var(--vend-slate);
+}
+
+.vend-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .nav-arrow {
@@ -167,7 +213,7 @@ h3, h4, .font-subhead {
 
 .popup-footer {
   padding: 16px 20px;
-  background: #F5F4F3;
+  background: var(--vend-warm-100);
   text-align: right;
   border-top: 1px solid var(--vend-concrete);
 }

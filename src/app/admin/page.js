@@ -20,8 +20,9 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-gray-600 mt-2">
+        <p className="text-vend-mint-700 text-xs font-semibold tracking-wide uppercase mb-2">The Republic</p>
+        <h1 className="text-3xl font-headline text-vend-black tracking-tight">Admin dashboard</h1>
+        <p className="text-vend-slate mt-2 font-normal">
           Welcome back, {user?.email}
         </p>
       </div>
@@ -29,48 +30,48 @@ export default function AdminDashboard() {
 <div className="mt-6 mb-8 flex flex-wrap gap-3">
   <Link
     href="/admin/requests"
-    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+    className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
   >
-    📋 View Parking Requests
+    View parking requests
   </Link>
   <Link
     href="/admin/tenants"
-    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+    className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
   >
-    🏢 Manage Tenant Contacts
+    Manage tenant contacts
   </Link>
   <Link
     href="/admin/summary"
-    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+    className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
   >
-    📊 Allocation Summary
+    Allocation summary
   </Link>
   {isSuperAdmin && (
     <Link
       href="/admin/team"
-      className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white rounded-xl shadow hover:bg-gray-700 transition-colors font-medium"
+      className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
     >
-      👥 Admin Users
+      Admin users
     </Link>
   )}
 </div>
 
       {/* Floor Navigation */}
       <div className="mt-8">
-        <h2 className="text-xl font-semibold text-gray-800 mb-6">Manage Floors</h2>
+        <h2 className="text-xl font-headline text-vend-black mb-6 tracking-tight">Manage floors</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {FLOORS.map(({ route, label }) => (
             <Link
               key={route}
               href={`/admin/floor/${route}`}
-              className="bg-white p-6 rounded-xl shadow hover:shadow-lg transition-all duration-200 hover:bg-gray-50"
+              className="bg-vend-white p-6 rounded-xl border border-vend-concrete shadow-sm hover:shadow-md hover:border-vend-mint-600 transition-all duration-200"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="font-semibold text-gray-800 text-lg">{label}</h3>
-                  <p className="text-sm text-gray-500 mt-1">Edit parking layout</p>
+                  <h3 className="font-subhead text-vend-black text-lg">{label}</h3>
+                  <p className="text-sm text-vend-slate mt-1">Edit parking layout</p>
                 </div>
-                <span className="text-blue-600 text-xl">→</span>
+                <span className="text-vend-slate text-xl">→</span>
               </div>
             </Link>
           ))}

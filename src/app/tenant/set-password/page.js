@@ -78,7 +78,8 @@ export default function SetPasswordPage() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
           <div className="bg-vend-black px-6 py-5">
-            <h1 className="text-vend-white font-headline text-xl tracking-tight">Set Your Password</h1>
+            <p className="text-vend-mint text-xs font-semibold tracking-wide uppercase mb-1">The Republic</p>
+            <h1 className="text-vend-white font-headline text-xl tracking-tight">Set your password</h1>
             <p className="text-vend-concrete text-sm mt-1 font-subhead">
               {step === 1
                 ? 'Enter your email to receive a verification code'

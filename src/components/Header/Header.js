@@ -37,7 +37,7 @@ export default function Header() {
 
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Link href="/" className="font-headline text-lg text-vend-black hover:text-vend-slate tracking-tight">
+              <Link href="/" className="font-headline text-xl text-vend-black hover:text-vend-slate tracking-tight">
                 The Republic
               </Link>
             </div>

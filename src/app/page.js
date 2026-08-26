@@ -45,32 +45,36 @@ export default function Home() {
   return (
     <AuthPageBackdrop>
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md mx-auto">
-        <h1 className="text-3xl font-headline text-white text-center mb-2 tracking-tight [text-shadow:0_2px_8px_rgba(0,0,0,0.85),0_1px_2px_rgba(0,0,0,0.6)]">
-          The Republic
-        </h1>
-        <p className="text-gray-200 text-center mb-10 font-subhead">
-          Sign in. Find your space.
-        </p>
+        <div className="w-full max-w-md mx-auto text-center">
+          <h1 className="text-4xl sm:text-5xl font-headline text-vend-white tracking-tight [text-shadow:0_2px_12px_rgba(0,0,0,0.85),0_1px_2px_rgba(0,0,0,0.6)]">
+            The Republic
+          </h1>
+          <p className="mt-3 text-lg font-subhead text-vend-white [text-shadow:0_1px_6px_rgba(0,0,0,0.8)]">
+            Sign in. Find your{' '}
+            <span className="text-vend-mint">space</span>.
+          </p>
+          <p className="mt-2 text-sm text-vend-concrete [text-shadow:0_1px_4px_rgba(0,0,0,0.75)]">
+            Friction-free parking for tenants.
+          </p>
 
-        <div className="space-y-4">
-          <Link
-            href="/tenant/login"
-            className="block w-full p-6 bg-vend-white rounded-xl shadow-sm border border-vend-concrete hover:border-vend-mint hover:shadow-md transition-all text-left group"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-lg bg-vend-black flex items-center justify-center text-vend-mint text-xl font-headline group-hover:bg-vend-slate transition-colors">
-                P
+          <div className="mt-10 space-y-4 text-left">
+            <Link
+              href="/tenant/login"
+              className="block w-full p-6 bg-vend-white rounded-xl border border-vend-concrete hover:border-vend-mint-600 shadow-sm hover:shadow-md transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-vend-black flex items-center justify-center text-vend-mint text-xl font-headline group-hover:bg-vend-slate transition-colors">
+                  P
+                </div>
+                <div>
+                  <h2 className="text-lg font-subhead text-vend-black">Tenant access</h2>
+                  <p className="text-sm text-vend-slate">View your spaces. Request in seconds.</p>
+                </div>
+                <span className="ml-auto text-vend-slate group-hover:text-vend-black transition-colors">→</span>
               </div>
-              <div>
-                <h2 className="text-lg font-subhead text-vend-black">Tenant Access</h2>
-                <p className="text-sm text-vend-slate">View your spaces. Request in seconds.</p>
-              </div>
-              <span className="ml-auto text-vend-slate group-hover:text-vend-black transition-colors">→</span>
-            </div>
-          </Link>
+            </Link>
+          </div>
         </div>
-      </div>
       </div>
     </AuthPageBackdrop>
   )
