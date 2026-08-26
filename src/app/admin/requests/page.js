@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import AdminBackLink from '@/components/admin/AdminBackLink'
 
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -55,8 +56,9 @@ export default function RequestsAdminPage() {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Parking Spot Requests</h1>
-          <p className="text-gray-500 text-sm mt-1">Review and approve incoming spot requests</p>
+          <AdminBackLink className="mb-2" />
+          <h1 className="text-2xl font-bold text-gray-900">Parking Space Requests</h1>
+          <p className="text-gray-500 text-sm mt-1">Review and approve incoming space requests</p>
         </div>
         <button
           onClick={loadRequests}
@@ -101,7 +103,7 @@ export default function RequestsAdminPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-lg font-bold text-gray-900">
-                      Spot {req.spot_number}
+                      Space {req.spot_number}
                     </span>
                     <span className="text-sm text-gray-500">{req.floor_label}</span>
                     {req.spot_type && (

@@ -103,7 +103,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
 
   const handleSubmit = async () => {
     setPhoneError('')
-    if (!selectedSpot) return setError('Please select a spot first.')
+    if (!selectedSpot) return setError('Please select a space first.')
     if (!form.requester_name) return setError('Please enter your name.')
     if (!form.requester_role) return setError('Please select your role.')
     if (!form.requester_phone.trim()) {
@@ -175,7 +175,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
 
         {/* Header */}
                 <div className="bg-vend-black px-6 py-4 flex items-center justify-between">
-          <h2 className="text-vend-white font-headline text-lg tracking-tight">Request a Parking Spot</h2>
+          <h2 className="text-vend-white font-headline text-lg tracking-tight">Request a Parking Space</h2>
           <button onClick={handleClose} className="text-vend-concrete hover:text-vend-white transition-colors text-xl">✕</button>
         </div>
 
@@ -184,7 +184,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
           <div className="p-8 text-center">
             <div className="text-5xl mb-4">✅</div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h3>
-            <p className="text-gray-600 mb-2">Your request for spot <b>{selectedSpot?.original_label || selectedSpot?.spotNumber}</b> has been received.</p>
+            <p className="text-gray-600 mb-2">Your request for space <b>{selectedSpot?.original_label || selectedSpot?.spotNumber}</b> has been received.</p>
             <p className="text-gray-500 text-sm mb-6">You'll hear back at <b>{form.requester_email}</b> once it's reviewed.</p>
             <button onClick={handleClose} className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors">
               Close
@@ -193,10 +193,10 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
         ) : (
           <div className="p-6">
 
-            {/* Step 1 — Select a Spot */}
+            {/* Step 1 — Select a Space */}
             {step === 1 && (
               <div>
-                <p className="text-gray-600 text-sm mb-4">Select the floor and spot you'd like to request.</p>
+                <p className="text-gray-600 text-sm mb-4">Select the floor and space you&apos;d like to request.</p>
 
                 {/* Floor Selector */}
                 <div className="mb-4">
@@ -215,16 +215,16 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                   </select>
                 </div>
 
-                {/* Spot Dropdown */}
+                {/* Space Dropdown */}
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Available Spots {loadingSpots && <span className="text-gray-400">(loading...)</span>}
+                    Available Spaces {loadingSpots && <span className="text-gray-400">(loading...)</span>}
                   </label>
                   {availableSpots.length === 0 && !loadingSpots ? (
                     <p className="text-sm text-gray-500 italic">
                       {tenantCompany
-                        ? `No available ${tenantCompany} spots on this floor.`
-                        : 'No available spots on this floor.'}
+                        ? `No available ${tenantCompany} spaces on this floor.`
+                        : 'No available spaces on this floor.'}
                     </p>
                   ) : (
                     <select
@@ -235,7 +235,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                         setSelectedSpot(spot || null)
                       }}
                     >
-                      <option value="">— Select a spot —</option>
+                      <option value="">— Select a space —</option>
                       {availableSpots.map(spot => (
                         <option key={spot.id} value={spot.id}>
                           {spot.original_label} {spot.spot_type ? `(${spot.spot_type})` : ''}
@@ -262,7 +262,7 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => {
-                      if (!selectedSpot) return setError('Please select a spot to continue.')
+                      if (!selectedSpot) return setError('Please select a space to continue.')
                       setError('')
                       setStep(2)
                     }}
@@ -277,10 +277,10 @@ export default function SpotRequestModal({ isOpen, onClose, preselectedSpot, flo
             {/* Step 2 — Fill in Details */}
             {step === 2 && (
               <div>
-                {/* Selected Spot Summary */}
+                {/* Selected Space Summary */}
                 <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 mb-5 flex items-center justify-between">
                   <div>
-                    <div className="text-xs text-gray-500">Requesting spot</div>
+                    <div className="text-xs text-gray-500">Requesting space</div>
                     <div className="font-bold text-gray-900">
                       {selectedSpot?.original_label || selectedSpot?.spotNumber}
                       {(selectedSpot?.spot_type || selectedSpot?.spotType) &&

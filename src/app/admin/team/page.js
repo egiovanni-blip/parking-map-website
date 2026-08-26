@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AdminBackLink from '@/components/admin/AdminBackLink'
 
 export default function AdminTeamPage() {
   const [admins, setAdmins] = useState([])
@@ -64,6 +65,7 @@ export default function AdminTeamPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
+          <AdminBackLink className="mb-2" />
           <h1 className="text-2xl font-bold text-gray-900">Admin Users</h1>
           <p className="text-gray-500 text-sm mt-1">All users with admin access to this portal</p>
         </div>

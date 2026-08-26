@@ -3,7 +3,6 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { FLOORS } from '@/lib/constants'
 import {
@@ -13,12 +12,13 @@ import {
   getSvgViewBoxSize,
   spotToOverlayPercent,
 } from '@/lib/svg-map-layout'
+import AdminBackLink from '@/components/admin/AdminBackLink'
 
-// Spot type configurations used for border color display
+// Space type configurations used for border color display
 const SPOT_TYPES = [
-  { id: 'regular', name: 'Regular', color: '#fbbf24', icon: '🚗', description: 'Standard parking spot' },
+  { id: 'regular', name: 'Regular', color: '#fbbf24', icon: '🚗', description: 'Standard parking space' },
   { id: 'reserved', name: 'Reserved', color: '#ef4444', icon: '⭐', description: 'Reserved parking' },
-  { id: 'compact', name: 'Compact', color: '#a855f7', icon: '🅿️', description: 'Compact car spot' },
+  { id: 'compact', name: 'Compact', color: '#a855f7', icon: '🅿️', description: 'Compact car space' },
   { id: 'ev', name: 'EV', color: '#10b981', icon: '🔋', description: 'Electric vehicle charging' },
   { id: 'ada', name: 'ADA', color: '#3b82f6', icon: '♿', description: 'Handicap accessible' },
   { id: 'ada_ev', name: 'ADA + EV', color: '#1e40af', icon: '♿🔌', description: 'Handicap with EV charging' },
@@ -38,6 +38,7 @@ export default function AdminFloorPage() {
   const [error, setError] = useState('')
   const [spots, setSpots] = useState([])
   const [selectedSpot, setSelectedSpot] = useState(null)
+  const [hoveredSpotId, setHoveredSpotId] = useState(null)
   const [editingCompany, setEditingCompany] = useState(false)
   const [editingParker, setEditingParker] = useState(false)
   const [editingSpotNumber, setEditingSpotNumber] = useState(false)
@@ -483,7 +484,7 @@ export default function AdminFloorPage() {
 
   // SAVE Spot Number
   const saveSpotNumber = async () => {
-    if (!selectedSpot || !selectedSpot.dbId) { alert('⚠️ Please wait for the spot to be saved to the database first'); return; }
+    if (!selectedSpot || !selectedSpot.dbId) { alert('⚠️ Please wait for the space to be saved to the database first'); return; }
     try {
       const spotNumToSave = spotNumber.trim() || 'Unlabeled';
       if (spotNumToSave === selectedSpot.spotNumber) { setEditingSpotNumber(false); return; }
@@ -493,16 +494,16 @@ export default function AdminFloorPage() {
       setSpots(updatedSpots);
       setSelectedSpot(prev => ({ ...prev, spotNumber: spotNumToSave }));
       setEditingSpotNumber(false);
-      alert(`✅ Spot number updated: "${spotNumToSave}"`);
+      alert(`✅ Space number updated: "${spotNumToSave}"`);
     } catch (error) {
       console.error('Error saving spot number:', error);
-      alert('❌ Failed to update spot number: ' + error.message);
+      alert('❌ Failed to update space number: ' + error.message);
     }
   };
 
   // SAVE Spot Type
   const saveSpotType = async () => {
-    if (!selectedSpot || !selectedSpot.dbId) { alert('⚠️ Please wait for the spot to be saved to the database first'); return; }
+    if (!selectedSpot || !selectedSpot.dbId) { alert('⚠️ Please wait for the space to be saved to the database first'); return; }
     try {
       const spotTypeToSave = spotType || 'regular';
       const spotTypeConfig = SPOT_TYPES.find(t => t.id === spotTypeToSave) || SPOT_TYPES[0];
@@ -512,10 +513,10 @@ export default function AdminFloorPage() {
       setSpots(updatedSpots);
       setSelectedSpot(prev => ({ ...prev, spotType: spotTypeToSave, spotTypeConfig }));
       setEditingSpotType(false);
-      alert(`✅ Spot type updated to: "${spotTypeConfig.name}"`);
+      alert(`✅ Space type updated to: "${spotTypeConfig.name}"`);
     } catch (error) {
       console.error('Error saving spot type:', error);
-      alert('❌ Failed to update spot type: ' + error.message);
+      alert('❌ Failed to update space type: ' + error.message);
     }
   };
 
@@ -523,14 +524,14 @@ export default function AdminFloorPage() {
 
   const handleRedetectSpots = async () => {
     if (!svgRef.current) return;
-    const confirmed = window.confirm('🔄 MANUAL RE-DETECTION\n\nThis will:\n1. Re-scan SVG for YELLOW spots only\n2. Add NEW spots to database\n3. Keep existing company/parker/spot info\n\nContinue?');
+    const confirmed = window.confirm('🔄 MANUAL RE-DETECTION\n\nThis will:\n1. Re-scan SVG for YELLOW spaces only\n2. Add NEW spaces to database\n3. Keep existing company/parker/space info\n\nContinue?');
     if (!confirmed) return;
     setLoading(true);
     try {
       const svgElement = svgRef.current?.querySelector('svg');
       if (!svgElement) { alert('SVG element not found'); return; }
       const detectedSpots = detectSpotsFromSVG(svgElement);
-      if (detectedSpots.length === 0) { alert('❌ No yellow spots detected in SVG'); return; }
+      if (detectedSpots.length === 0) { alert('❌ No yellow spaces detected in SVG'); return; }
       const { data: existingSpots, error: dbError } = await supabase.from('parking_spots').select('*').eq('floor_id', floorId)
       if (dbError) throw dbError;
       const existingSpotMap = new Map();
@@ -558,7 +559,7 @@ export default function AdminFloorPage() {
       finalSpots.sort((a, b) => Math.abs(a.svgY - b.svgY) < 10 ? a.svgX - b.svgX : a.svgY - b.svgY);
       setSpots(finalSpots);
       setSelectedSpot(null);
-      alert(`✅ Re-detection complete!\n\n• Yellow spots detected: ${detectedSpots.length}\n• New spots added: ${spotsToSave.length}\n• Total in database: ${finalSpots.filter(s => s.isFromDatabase).length}`);
+      alert(`✅ Re-detection complete!\n\n• Yellow spaces detected: ${detectedSpots.length}\n• New spaces added: ${spotsToSave.length}\n• Total in database: ${finalSpots.filter(s => s.isFromDatabase).length}`);
     } catch (error) {
       console.error('❌ Re-detection error:', error);
       alert(`❌ Error during re-detection: ${error.message}`);
@@ -578,61 +579,47 @@ export default function AdminFloorPage() {
           const pos = calculateSpotPosition(spot);
           if (!pos) return null;
           const isSelected = isSameSpot(selectedSpot, spot);
+          const isHovered = hoveredSpotId === (spot.dbId || spot.id);
+          const isHighlighted = hoveredSpotId ? isHovered : isSelected;
           const isOccupied = spot.companyName !== 'Unassigned';
           const spotTypeConfig = spot.spotTypeConfig || SPOT_TYPES[0];
-          const borderColor = isOccupied ? '#3b82f6' : spotTypeConfig.color;
           const tooltipContent = isOccupied 
             ? `${spot.spotNumber} • ${spot.companyName} • ${spotTypeConfig.name}${spot.parkerName ? ` • Parker: ${spot.parkerName}` : ''}`
             : `${spot.spotNumber} • ${spotTypeConfig.name} • Available`;
           return (
             <div
               key={spot.dbId || spot.id}
-              className={`absolute cursor-pointer transition-all duration-200 rounded pointer-events-auto group ${isSelected ? 'z-30' : ''}`}
+              className={`absolute cursor-pointer transition-all duration-200 rounded pointer-events-auto group ${isHighlighted ? 'z-30' : ''}`}
               style={{
                 left: pos.left,
                 top: pos.top,
                 width: pos.width,
                 height: pos.height,
-                backgroundColor: isSelected ? `${highlightColor}30` : 'transparent',
-                boxShadow: isSelected ? `0 0 0 3px ${highlightColor}, 0 0 14px ${highlightColor}99` : 'none',
-                zIndex: isSelected ? 30 : 1,
+                backgroundColor: isHighlighted ? `${highlightColor}30` : 'transparent',
+                boxShadow: isHighlighted ? `0 0 0 3px ${highlightColor}, 0 0 14px ${highlightColor}99` : 'none',
+                zIndex: isHighlighted ? 30 : 1,
               }}
               onClick={() => handleSpotClick(spot)}
-              onMouseEnter={(e) => {
-                if (isSelected) return;
-                e.currentTarget.style.zIndex = '10';
-                e.currentTarget.style.boxShadow = `0 0 0 2px ${highlightColor}`;
-              }}
-              onMouseLeave={(e) => {
-                if (isSelected) return;
-                e.currentTarget.style.zIndex = '1';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              onMouseEnter={() => setHoveredSpotId(spot.dbId || spot.id)}
+              onMouseLeave={() => setHoveredSpotId(null)}
               title={tooltipContent}
             >
-              {isSelected && (
-                <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1.5 pointer-events-none flex flex-col items-center">
+              {isHighlighted && (
+                <div className="absolute left-1/2 bottom-full -translate-x-1/2 mb-1.5 pointer-events-none flex flex-col items-center z-30">
                   <div className="bg-vend-mint text-vend-black text-xs font-bold px-2.5 py-1 rounded-md shadow-lg whitespace-nowrap">
                     {spot.spotNumber}
                   </div>
                   <div className="w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-vend-mint -mt-px" />
                 </div>
               )}
-              {isSelected && (
+              {isHighlighted && (
                 <div
-                  className="absolute inset-0 rounded pointer-events-none animate-pulse"
+                  className={`absolute inset-0 rounded pointer-events-none ${isSelected && !hoveredSpotId ? 'animate-pulse' : ''}`}
                   style={{ boxShadow: `inset 0 0 0 2px ${highlightColor}` }}
                 />
               )}
               {isOccupied && <div className="absolute text-sm">🏢</div>}
               {!isOccupied && spot.isFromDatabase && <div className="absolute text-sm">💾</div>}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                {!isSelected && (
-                  <div className={`text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity ${isOccupied ? 'bg-blue-600 text-white' : 'bg-black/70 text-white'}`}>
-                    {spot.spotNumber}
-                  </div>
-                )}
-              </div>
             </div>
           );
         })}
@@ -647,6 +634,7 @@ export default function AdminFloorPage() {
       <div className="mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
+              <AdminBackLink className="mb-2" />
               <h1 className="text-2xl font-bold text-gray-900">
                 {currentFloor.label} - Parking Admin
               </h1>
@@ -655,7 +643,7 @@ export default function AdminFloorPage() {
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-sm border border-gray-300"></div>
                     <span className="text-gray-600">
-                      {spots.length} spots • {spots.filter(s => s.companyName !== 'Unassigned').length} occupied
+                      {spots.length} spaces • {spots.filter(s => s.companyName !== 'Unassigned').length} occupied
                     </span>
                   </div>
                 </div>
@@ -682,14 +670,8 @@ export default function AdminFloorPage() {
                 className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
                 disabled={loading}
               >
-                {loading ? 'Processing...' : '🔄 Re-detect Spots'}
+                {loading ? 'Processing...' : '🔄 Re-detect Spaces'}
               </button>
-              <Link 
-                href="/admin" 
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-2"
-              >
-                ← Admin Dashboard
-              </Link>
             </div>
           </div>
         </div>
@@ -702,7 +684,7 @@ export default function AdminFloorPage() {
               <div className="text-center absolute inset-0 flex items-center justify-center bg-white z-10">
                 <div>
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Detecting yellow parking spots...</p>
+                  <p className="text-gray-600">Detecting yellow parking spaces...</p>
                   <p className="text-sm text-gray-500">Scanning SVG and saving to database</p>
                 </div>
               </div>
@@ -740,12 +722,12 @@ export default function AdminFloorPage() {
           </div>
         </div>
 
-        {/* Right sidebar — spot list + edit panel */}
+        {/* Right sidebar — space list + edit panel */}
         {!loading && !error && (
           <div className="w-full lg:w-[340px] flex-shrink-0 flex flex-col gap-4 lg:max-h-[calc(100vh-180px)]">
             <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex flex-col min-h-0 flex-1">
               <div className="flex items-center justify-between mb-4 flex-shrink-0">
-                <h3 className="font-medium text-gray-900">Parking Spots ({spots.length})</h3>
+                <h3 className="font-medium text-gray-900">Parking Spaces ({spots.length})</h3>
                 <div className="text-xs text-gray-500 text-right">
                   <div className="text-blue-600">{spots.filter(s => s.companyName !== 'Unassigned').length} occupied</div>
                   <div className="text-green-600">{spots.filter(s => s.isFromDatabase).length} in DB</div>
@@ -779,7 +761,7 @@ export default function AdminFloorPage() {
                           {spot.parkerName ? (
                             <div className="text-xs text-gray-500 truncate" title={spot.parkerName}>👤 {spot.parkerName}</div>
                           ) : (
-                            <div className="text-xs text-gray-500 italic">{isOccupied ? 'Company spot' : 'Available'}</div>
+                            <div className="text-xs text-gray-500 italic">{isOccupied ? 'Company space' : 'Available'}</div>
                           )}
                         </div>
                       );
@@ -788,8 +770,8 @@ export default function AdminFloorPage() {
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <div className="mb-4">🚗</div>
-                    <p>No yellow parking spots detected.</p>
-                    <p className="text-sm mt-1">SVG loaded, but no yellow-colored spots found.</p>
+                    <p>No yellow parking spaces detected.</p>
+                    <p className="text-sm mt-1">SVG loaded, but no yellow-colored spaces found.</p>
                   </div>
                 )}
             </div>
@@ -797,7 +779,7 @@ export default function AdminFloorPage() {
             {selectedSpot ? (
               <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm flex-shrink-0">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-gray-900">Edit Parking Spot</h3>
+                  <h3 className="font-medium text-gray-900">Edit Parking Space</h3>
                   <button
                     onClick={() => { setSelectedSpot(null); setEditingCompany(false); setEditingParker(false); setEditingSpotNumber(false); setEditingSpotType(false); }}
                     className="text-sm text-gray-500 hover:text-gray-700"
@@ -831,9 +813,9 @@ export default function AdminFloorPage() {
                       )}
                     </div>
 
-                    {/* Spot Type */}
+                    {/* Space Type */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Spot Type (Border Color)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Space Type (Border Color)</label>
                       {editingSpotType ? (
                         <div className="space-y-2">
                           <select value={spotType} onChange={(e) => setSpotType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" autoFocus>
@@ -850,11 +832,11 @@ export default function AdminFloorPage() {
                             <div className="text-xl">{selectedSpot.spotTypeConfig?.icon || '🚗'}</div>
                             <div>
                               <div className="font-bold text-gray-900">{selectedSpot.spotTypeConfig?.name || 'Regular'}</div>
-                              <div className="text-xs text-gray-500">{selectedSpot.companyName === 'Unassigned' ? 'Sets border color for unoccupied spots' : 'Shows in tooltip when hovering'}</div>
+                              <div className="text-xs text-gray-500">{selectedSpot.companyName === 'Unassigned' ? 'Sets border color for unoccupied spaces' : 'Shows in tooltip when hovering'}</div>
                             </div>
                           </div>
                           <button onClick={startEditingSpotType} className="w-full px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center justify-center gap-1" disabled={!selectedSpot.dbId}>
-                            <span>🎨</span><span>{selectedSpot.dbId ? 'Change Spot Type' : 'Wait for DB Save'}</span>
+                            <span>🎨</span><span>{selectedSpot.dbId ? 'Change Space Type' : 'Wait for DB Save'}</span>
                           </button>
                         </div>
                       )}
@@ -885,12 +867,12 @@ export default function AdminFloorPage() {
                       )}
                     </div>
 
-                    {/* Spot Number */}
+                    {/* Space Number */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Spot Number</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Space Number</label>
                       {editingSpotNumber ? (
                         <div className="space-y-2">
-                          <input type="text" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter spot number (e.g., A1, B2)..." autoFocus />
+                          <input type="text" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter space number (e.g., A1, B2)..." autoFocus />
                           <div className="flex gap-2">
                             <button onClick={saveSpotNumber} className="flex-1 px-3 py-1.5 bg-gray-700 text-black rounded-lg hover:bg-gray-800 transition-colors text-sm">🔢 Save Number</button>
                             <button onClick={() => { setEditingSpotNumber(false); setSpotNumber(selectedSpot.spotNumber || ''); }} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">Cancel</button>
@@ -903,7 +885,7 @@ export default function AdminFloorPage() {
                             <div className="text-xs text-gray-500 mt-1">Shows on hover</div>
                           </div>
                           <button onClick={startEditingSpotNumber} className="w-full px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-1">
-                            <span>🔢</span><span>Edit Spot Number</span>
+                            <span>🔢</span><span>Edit Space Number</span>
                           </button>
                         </div>
                       )}
@@ -913,7 +895,7 @@ export default function AdminFloorPage() {
             ) : (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center flex-shrink-0">
                 <div className="text-gray-400 mb-2">👆</div>
-                <p className="text-sm text-gray-600">Click on any yellow parking spot to edit</p>
+                <p className="text-sm text-gray-600">Click on any yellow parking space to edit</p>
               </div>
             )}
           </div>

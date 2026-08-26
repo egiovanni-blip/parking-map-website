@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import AdminBackLink from '@/components/admin/AdminBackLink'
 
 const emptyForm = { email: '', full_name: '', company_name: '' }
 
@@ -255,6 +256,7 @@ export default function TenantContactsPage() {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-6">
+        <AdminBackLink className="mb-2" />
         <h1 className="text-2xl font-bold text-gray-900">Tenant Contacts</h1>
         <p className="text-gray-500 text-sm mt-1">Manage which emails can access the tenant parking view</p>
       </div>
@@ -305,7 +307,7 @@ export default function TenantContactsPage() {
               <input
                 type="text"
                 className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900"
-                placeholder="Enter company name exactly as in parking spots"
+                placeholder="Enter company name exactly as in parking spaces"
                 value={customCompany}
                 onChange={(e) => setCustomCompany(e.target.value)}
               />

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, Fragment } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { FLOORS } from '@/lib/constants'
+import AdminBackLink from '@/components/admin/AdminBackLink'
 
 // P3–P9 → routes 2–8
 const SUMMARY_FLOORS = FLOORS.filter(f => f.route >= 2 && f.route <= 8)
@@ -328,10 +329,8 @@ export default function AllocationSummaryPage() {
     <div className="max-w-4xl mx-auto">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <Link href="/admin" className="hidden sm:inline text-sm text-gray-500 hover:text-gray-700">
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-2">Allocation Summary</h1>
+          <AdminBackLink className="mb-2" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Allocation Summary</h1>
           <p className="text-gray-600 mt-1">
             Aggregated by tenant across all levels ({SUMMARY_FLOOR_LABELS})
           </p>
@@ -458,7 +457,7 @@ export default function AllocationSummaryPage() {
             Allocated spaces vs elected reserved
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Available = spots assigned to the tenant. Elected = spots marked Reserved.
+            Available = spaces assigned to the tenant. Elected = spaces marked Reserved.
           </p>
         </div>
 

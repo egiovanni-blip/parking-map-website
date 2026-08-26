@@ -49,10 +49,10 @@ export async function POST(request) {
       await resend.emails.send({
         from: getResendFromAddress(),
         to: process.env.NOTIFY_EMAIL,
-        subject: `New Parking Request — Spot ${spot_number} (${floor_label})`,
+        subject: `New Parking Request — Space ${spot_number} (${floor_label})`,
         html: `
-          <h2>New Parking Spot Request</h2>
-          <p><b>Spot:</b> ${spot_number} on ${floor_label}</p>
+          <h2>New Parking Space Request</h2>
+          <p><b>Space:</b> ${spot_number} on ${floor_label}</p>
           <p><b>Type:</b> ${spot_type || 'Not specified'}</p>
           <p><b>Requester:</b> ${requester_name}${requester_role ? ` — ${requester_role}` : ''}</p>
           <p><b>Company:</b> ${requester_company}</p>
@@ -72,7 +72,7 @@ export async function POST(request) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: `🅿️ *New Parking Request*\n*Spot:* ${spot_number} on ${floor_label}\n*Type:* ${spot_type || 'Not specified'}\n*From:* ${requester_name}${requester_role ? ` (${requester_role})` : ''} — ${requester_company}\n*Email:* ${requester_email}${requester_phone ? `\n*Phone:* ${requester_phone}` : ''}${notes ? `\n*Notes:* ${notes}` : ''}\n<${adminUrl}|Review in Admin →>`
+          text: `🅿️ *New Parking Request*\n*Space:* ${spot_number} on ${floor_label}\n*Type:* ${spot_type || 'Not specified'}\n*From:* ${requester_name}${requester_role ? ` (${requester_role})` : ''} — ${requester_company}\n*Email:* ${requester_email}${requester_phone ? `\n*Phone:* ${requester_phone}` : ''}${notes ? `\n*Notes:* ${notes}` : ''}\n<${adminUrl}|Review in Admin →>`
         })
       })
     } catch (slackErr) {

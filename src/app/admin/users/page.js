@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import AdminBackLink from '@/components/admin/AdminBackLink'
 
 export default function AdminUsersPage() {
   const [email, setEmail] = useState('')
@@ -52,6 +53,7 @@ export default function AdminUsersPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-6">
+        <AdminBackLink className="mb-2" />
         <h1 className="text-2xl font-bold text-gray-900">Invite Admin User</h1>
         <p className="text-gray-500 text-sm mt-1">
           Send an email verification code so the new admin can choose their own password.

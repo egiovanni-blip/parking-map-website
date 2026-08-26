@@ -30,26 +30,26 @@ export default function AdminDashboard() {
 <div className="mt-6 mb-8 flex flex-wrap gap-3">
   <Link
     href="/admin/requests"
-    className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
+    className="inline-flex items-center gap-2 px-6 py-3 bg-vend-mint text-vend-black font-semibold rounded-xl shadow hover:bg-vend-mint-600 transition-colors"
   >
-    View parking requests
+    View parking space requests
   </Link>
   <Link
     href="/admin/tenants"
-    className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
+    className="inline-flex items-center gap-2 px-6 py-3 bg-vend-mint text-vend-black font-semibold rounded-xl shadow hover:bg-vend-mint-600 transition-colors"
   >
     Manage tenant contacts
   </Link>
   <Link
     href="/admin/summary"
-    className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
+    className="inline-flex items-center gap-2 px-6 py-3 bg-vend-mint text-vend-black font-semibold rounded-xl shadow hover:bg-vend-mint-600 transition-colors"
   >
     Allocation summary
   </Link>
   {isSuperAdmin && (
     <Link
       href="/admin/team"
-      className="inline-flex items-center gap-2 px-6 py-3 vend-btn-primary rounded-xl shadow transition-colors"
+      className="inline-flex items-center gap-2 px-6 py-3 bg-vend-mint text-vend-black font-semibold rounded-xl shadow hover:bg-vend-mint-600 transition-colors"
     >
       Admin users
     </Link>
