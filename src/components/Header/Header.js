@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Link from 'next/link'
@@ -18,19 +19,45 @@ function getInitials(label) {
   return parts[0].slice(0, 2).toUpperCase()
 }
 
-function UserProfileChip({ name, subtitle, role }) {
+function UserProfileChip({ initialsFrom, fullName, email, role }) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [open])
+
+  const displayName = fullName || email || role
+
   return (
-    <div
-      className="flex items-center gap-2.5 rounded-full border border-vend-concrete bg-vend-warm-100/80 py-1 pl-1 pr-3"
-      title={[name, subtitle, role].filter(Boolean).join(' · ')}
-    >
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-vend-black text-xs font-semibold text-vend-mint">
-        {getInitials(name || subtitle)}
-      </div>
-      <div className="hidden min-w-0 sm:block">
-        <p className="truncate text-sm font-semibold leading-tight text-vend-black">{name}</p>
-        <p className="truncate text-xs leading-tight text-vend-slate">{role || subtitle}</p>
-      </div>
+    <div className="relative" ref={rootRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        aria-haspopup="true"
+        className="flex items-center gap-2 rounded-full border border-vend-concrete bg-vend-warm-100/80 py-1 pl-1 pr-3 transition-colors hover:bg-vend-warm-100"
+      >
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-vend-black text-xs font-semibold text-vend-mint">
+          {getInitials(initialsFrom || email || fullName)}
+        </div>
+        <span className="text-xs font-semibold text-vend-slate">{role}</span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-50 mt-2 min-w-[220px] max-w-[280px] rounded-xl border border-vend-concrete bg-vend-white p-3 shadow-lg">
+          <p className="truncate text-sm font-semibold text-vend-black">{displayName}</p>
+          {fullName && email && (
+            <p className="mt-0.5 truncate text-xs text-vend-slate">{email}</p>
+          )}
+          <p className="mt-2 text-[10px] font-semibold uppercase tracking-wide text-vend-slate">{role}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -106,7 +133,9 @@ export default function Header() {
             ) : user ? (
               <>
                 <UserProfileChip
-                  name={user.email}
+                  initialsFrom={user.email}
+                  fullName={user.user_metadata?.full_name || null}
+                  email={user.email}
                   role="Admin"
                 />
                 <button
@@ -119,7 +148,9 @@ export default function Header() {
             ) : isTenant ? (
               <>
                 <UserProfileChip
-                  name={tenantProfile?.full_name || tenantProfile?.email || 'Tenant'}
+                  initialsFrom={tenantProfile?.full_name || tenantProfile?.email}
+                  fullName={tenantProfile?.full_name || null}
+                  email={tenantProfile?.email}
                   role={tenantProfile?.company_name || 'Tenant'}
                 />
                 <button
