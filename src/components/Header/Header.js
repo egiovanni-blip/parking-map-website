@@ -43,7 +43,7 @@ function UserProfileChip({ initialsFrom, fullName, email, role }) {
         aria-haspopup="true"
         className="flex items-center gap-2 rounded-full border border-vend-concrete bg-vend-warm-100/80 py-1 pl-1 pr-3 transition-colors hover:bg-vend-warm-100"
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-vend-black text-xs font-semibold text-vend-mint">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-vend-mint text-xs font-semibold text-vend-black">
           {getInitials(initialsFrom || email || fullName)}
         </div>
         <span className="text-xs font-semibold text-vend-slate">{role}</span>

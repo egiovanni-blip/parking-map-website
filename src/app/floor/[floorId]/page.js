@@ -3,9 +3,9 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import SpotRequestModal from '@/components/SpotRequestModal'
 import DesktopOnlyNotice from '@/components/DesktopOnlyNotice'
+import VendNavArrow from '@/components/VendNavArrow'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { supabase } from '@/lib/supabase'
 import { FLOORS } from '@/lib/constants'
@@ -623,28 +623,26 @@ function FloorMapView() {
             <div>
               <h1 className="text-2xl font-headline text-vend-black tracking-tight">{currentFloor.label} — Parking Spaces</h1>
               <p className="text-vend-slate mt-1">Click a space for details. Request when it&apos;s available.</p>
-              {!loading && !error && (
-                <div className="flex items-center gap-4 mt-2 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm border border-gray-300"></div>
-                    <span className="text-gray-600">{spots.length} total spaces</span>
-                  </div>
-                  <span className="text-gray-600">
-                    {spots.filter(s => getOccupancyStatus(s).type !== null).length > 0 && `${spots.filter(s => getOccupancyStatus(s).type !== null).length} occupied`}
-                  </span>
-                </div>
-              )}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={goToPrevFloor} disabled={currentIndex <= 0} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
-                ← {currentIndex > 0 ? FLOORS[currentIndex - 1].label : 'Back'}
-              </button>
-              <button onClick={goToNextFloor} disabled={currentIndex >= FLOORS.length - 1} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed">
-                {currentIndex < FLOORS.length - 1 ? FLOORS[currentIndex + 1].label : 'Next'} →
-              </button>
-              <Link href="/" className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center gap-2">
-                ← Back to Home
-              </Link>
+            <div className="flex flex-wrap gap-2 lg:mr-24">
+              {currentIndex > 0 && (
+                <button
+                  onClick={goToPrevFloor}
+                  className="nav-arrow inline-flex items-center gap-2 px-4 py-2 bg-vend-black text-vend-white font-semibold rounded-full hover:bg-vend-slate transition-colors text-sm"
+                >
+                  <VendNavArrow direction="left" className="h-4 w-4 text-vend-mint" />
+                  {FLOORS[currentIndex - 1].label}
+                </button>
+              )}
+              {currentIndex < FLOORS.length - 1 && (
+                <button
+                  onClick={goToNextFloor}
+                  className="nav-arrow inline-flex items-center gap-2 px-4 py-2 bg-vend-black text-vend-white font-semibold rounded-full hover:bg-vend-slate transition-colors text-sm"
+                >
+                  {FLOORS[currentIndex + 1].label}
+                  <VendNavArrow direction="right" className="h-4 w-4 text-vend-mint" />
+                </button>
+              )}
             </div>
           </div>
         </div>

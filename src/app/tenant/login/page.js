@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AuthPageBackdrop from '@/components/AuthPageBackdrop'
+import PasswordVisibilityToggle from '@/components/PasswordVisibilityToggle'
 import { useAuth } from '@/contexts/AuthContext'
 
 function TenantLoginForm() {
@@ -85,10 +86,11 @@ function TenantLoginForm() {
           <button
             type="button"
             aria-label={showPassword ? 'Hide password' : 'Show password'}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-vend-slate hover:text-vend-black rounded"
+            className="absolute inset-y-0 right-3 flex items-center text-vend-slate hover:text-vend-black"
             onClick={() => setShowPassword((v) => !v)}
+            tabIndex={-1}
           >
-            <span className="text-base leading-none" aria-hidden>👁</span>
+            <PasswordVisibilityToggle visible={showPassword} />
           </button>
         </div>
         <div className="mt-1 text-right">
@@ -104,7 +106,7 @@ function TenantLoginForm() {
         disabled={loading}
         className="w-full px-4 py-2.5 vend-btn-primary rounded-lg text-sm disabled:opacity-50"
       >
-        {loading ? 'Signing in...' : 'Sign in →'}
+        {loading ? 'Signing in...' : 'Sign in'}
       </button>
 
       <div className="mt-4 text-center space-y-2">
@@ -119,13 +121,14 @@ function TenantLoginForm() {
         </p>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-vend-concrete text-center">
-        <p className="text-xs text-vend-slate">
-          Are you an admin?{' '}
-          <Link href="/login" className="text-vend-black font-semibold hover:underline underline-offset-2">
-            Admin login →
-          </Link>
-        </p>
+      <div className="mt-4 pt-4 border-t border-vend-concrete flex flex-wrap items-center justify-center gap-2">
+        <p className="text-xs text-vend-slate">Are you an admin?</p>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center px-4 py-1.5 bg-vend-mint text-vend-black text-xs font-semibold rounded-full hover:bg-vend-mint-600 transition-colors"
+        >
+          Admin login
+        </Link>
       </div>
     </div>
   )

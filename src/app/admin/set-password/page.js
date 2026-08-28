@@ -120,12 +120,17 @@ export default function AdminSetPasswordPage() {
                   disabled={loading}
                   className="vend-btn-primary w-full rounded-lg px-4 py-2 text-sm disabled:opacity-50"
                 >
-                  {loading ? 'Sending...' : 'Send verification code →'}
+                  {loading ? 'Sending...' : 'Send verification code'}
                 </button>
-                <p className="mt-4 text-center text-xs text-vend-slate">
-                  Already have a password?{' '}
-                  <Link href="/login" className="font-semibold text-vend-black underline-offset-2 hover:underline">Sign in</Link>
-                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <p className="text-xs text-vend-slate">Already have a password?</p>
+                  <Link
+                    href="/login"
+                    className="inline-flex items-center justify-center px-4 py-1.5 bg-vend-mint text-vend-black text-xs font-semibold rounded-full hover:bg-vend-mint-600 transition-colors"
+                  >
+                    Sign in
+                  </Link>
+                </div>
               </div>
             ) : (
               <div>

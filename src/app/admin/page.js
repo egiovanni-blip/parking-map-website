@@ -64,15 +64,10 @@ export default function AdminDashboard() {
             <Link
               key={route}
               href={`/admin/floor/${route}`}
-              className="bg-vend-white p-6 rounded-xl border border-vend-concrete shadow-sm hover:shadow-md hover:border-vend-mint-600 transition-all duration-200"
+              className="block bg-vend-white p-6 rounded-xl border border-vend-concrete shadow-sm transition-all duration-200 hover:border-vend-mint hover:shadow-[0_0_0_2px_rgba(0,255,224,0.45),0_8px_28px_rgba(0,255,224,0.35)]"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-subhead text-vend-black text-lg">{label}</h3>
-                  <p className="text-sm text-vend-slate mt-1">Edit parking layout</p>
-                </div>
-                <span className="text-vend-slate text-xl">→</span>
-              </div>
+              <h3 className="font-subhead text-vend-black text-lg">{label}</h3>
+              <p className="text-sm text-vend-slate mt-1">Edit parking layout</p>
             </Link>
           ))}
         </div>

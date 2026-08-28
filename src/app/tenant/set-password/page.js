@@ -125,12 +125,17 @@ export default function SetPasswordPage() {
                   disabled={loading}
                   className="w-full px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm font-medium disabled:opacity-50"
                 >
-                  {loading ? 'Sending...' : 'Send Verification Code →'}
+                  {loading ? 'Sending...' : 'Send Verification Code'}
                 </button>
-                <p className="text-xs text-gray-400 text-center mt-4">
-                  Already have a password?{' '}
-                  <Link href="/tenant/login" className="text-blue-600 hover:underline">Sign in</Link>
-                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  <p className="text-xs text-vend-slate">Already have a password?</p>
+                  <Link
+                    href="/tenant/login"
+                    className="inline-flex items-center justify-center px-4 py-1.5 bg-vend-mint text-vend-black text-xs font-semibold rounded-full hover:bg-vend-mint-600 transition-colors"
+                  >
+                    Sign in
+                  </Link>
+                </div>
               </div>
             ) : (
               <div>

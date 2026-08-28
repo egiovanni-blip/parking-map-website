@@ -104,26 +104,21 @@ export default function LoginForm() {
           disabled={loading}
           className="vend-btn-primary w-full rounded-lg px-4 py-3 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? 'Signing in...' : 'Enter admin dashboard'}
+          {loading ? 'Signing in...' : 'Sign in'}
         </button>
 
-        <div className="space-y-2 text-center text-sm text-vend-slate">
-          <p>
-            First time or invited?{' '}
-            <Link href="/admin/set-password" className="font-semibold text-vend-black underline-offset-2 hover:underline">
-              Set your password
-            </Link>
-          </p>
-          <p className="text-xs text-vend-slate/80">Contact the super admin if you need access.</p>
-        </div>
+        <p className="text-center text-xs text-vend-slate/80">
+          Contact the super admin if you need access.
+        </p>
 
-        <div className="border-t border-vend-concrete pt-4 text-center">
-          <p className="text-xs text-vend-slate">
-            Looking for tenant parking access?{' '}
-            <Link href="/tenant/login" className="font-semibold text-vend-black underline-offset-2 hover:underline">
-              Tenant login →
-            </Link>
-          </p>
+        <div className="border-t border-vend-concrete pt-4 flex flex-wrap items-center justify-center gap-2">
+          <p className="text-xs text-vend-slate">Looking for tenant parking access?</p>
+          <Link
+            href="/tenant/login"
+            className="inline-flex items-center justify-center px-4 py-1.5 bg-vend-mint text-vend-black text-xs font-semibold rounded-full hover:bg-vend-mint-600 transition-colors"
+          >
+            Tenant login
+          </Link>
         </div>
       </form>
     </AdminAuthShell>
