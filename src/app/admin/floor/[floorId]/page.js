@@ -40,10 +40,7 @@ export default function AdminFloorPage() {
   const [spots, setSpots] = useState([])
   const [selectedSpot, setSelectedSpot] = useState(null)
   const [hoveredSpotId, setHoveredSpotId] = useState(null)
-  const [editingCompany, setEditingCompany] = useState(false)
-  const [editingParker, setEditingParker] = useState(false)
-  const [editingSpotNumber, setEditingSpotNumber] = useState(false)
-  const [editingSpotType, setEditingSpotType] = useState(false)
+  const [savingSpot, setSavingSpot] = useState(false)
   const [companyName, setCompanyName] = useState('')
   const [parkerName, setParkerName] = useState('')
   const [spotNumber, setSpotNumber] = useState('')
@@ -442,97 +439,85 @@ export default function AdminFloorPage() {
     setSpotType(spot.spotType || 'regular');
   };
 
-  const startEditingCompany = () => {
-    if (!selectedSpot) return;
-    setEditingCompany(true); setEditingParker(false); setEditingSpotNumber(false); setEditingSpotType(false);
+  const isUnassignedLabel = (name) => !name || ['unassigned', 'unlabeled'].includes(String(name).trim().toLowerCase());
+
+  // Pending edits vs. what is saved for the selected space
+  const pendingChanges = selectedSpot ? {
+    companyName: (companyName.trim() || 'Unassigned') !== (selectedSpot.companyName || 'Unassigned'),
+    parkerName: (parkerName.trim() || null) !== (selectedSpot.parkerName || null),
+    spotType: (spotType || 'regular') !== (selectedSpot.spotType || 'regular'),
+    spotNumber: (spotNumber.trim() || 'Unlabeled') !== (selectedSpot.spotNumber || 'Unlabeled'),
+  } : {};
+  const hasPendingChanges = Object.values(pendingChanges).some(Boolean);
+  const companyOptions = [...new Set(spots.map(s => s.companyName).filter(name => !isUnassignedLabel(name)))].sort();
+
+  const resetFormToSpot = (spot) => {
+    setCompanyName(spot?.companyName || 'Unassigned');
+    setParkerName(spot?.parkerName || '');
+    setSpotNumber(spot?.spotNumber || '');
+    setSpotType(spot?.spotType || 'regular');
   };
 
-  const startEditingParker = () => {
-    if (!selectedSpot) return;
-    setEditingParker(true); setEditingCompany(false); setEditingSpotNumber(false); setEditingSpotType(false);
+  // Write a set of field values for the selected space in one update, then sync local state
+  const applySpotUpdate = async (values) => {
+    const spotTypeConfig = SPOT_TYPES.find(t => t.id === values.spotType) || SPOT_TYPES[0];
+    const { error } = await supabase.from('parking_spots').update({
+      display_label: values.companyName,
+      custom_label: values.parkerName,
+      is_custom_labeled: !!values.parkerName,
+      spot_type: values.spotType,
+      original_label: values.spotNumber,
+      updated_at: new Date().toISOString(),
+    }).eq('id', selectedSpot.dbId)
+    if (error) throw error;
+    const patch = { ...values, isCustomLabeled: !!values.parkerName, spotTypeConfig };
+    setSpots(spots.map(spot => spot.dbId === selectedSpot.dbId ? { ...spot, ...patch } : spot));
+    setSelectedSpot(prev => ({ ...prev, ...patch }));
+    resetFormToSpot({ ...selectedSpot, ...patch });
   };
 
-  const startEditingSpotNumber = () => {
-    if (!selectedSpot) return;
-    setEditingSpotNumber(true); setEditingCompany(false); setEditingParker(false); setEditingSpotType(false);
-  };
-
-  const startEditingSpotType = () => {
-    if (!selectedSpot) return;
-    setEditingSpotType(true); setEditingCompany(false); setEditingParker(false); setEditingSpotNumber(false);
-  };
-
-  // SAVE Company Name
-  const saveCompanyName = async () => {
-    if (!selectedSpot || !selectedSpot.dbId) return;
+  // SAVE all edited fields at once
+  const saveSpotChanges = async () => {
+    if (!selectedSpot?.dbId) { alert('⚠️ Please wait for the space to be saved to the database first'); return; }
+    if (!hasPendingChanges) return;
+    setSavingSpot(true);
     try {
-      const companyToSave = companyName.trim() || 'Unassigned';
-      const { error } = await supabase.from('parking_spots').update({ display_label: companyToSave, updated_at: new Date().toISOString() }).eq('id', selectedSpot.dbId)
-      if (error) throw error;
-      const updatedSpots = spots.map(spot => spot.dbId === selectedSpot.dbId ? { ...spot, companyName: companyToSave } : spot);
-      setSpots(updatedSpots);
-      setSelectedSpot(prev => ({ ...prev, companyName: companyToSave }));
-      setEditingCompany(false);
-      alert(`✅ Company name updated: "${companyToSave}"`);
+      await applySpotUpdate({
+        companyName: companyName.trim() || 'Unassigned',
+        parkerName: parkerName.trim() || null,
+        spotType: spotType || 'regular',
+        spotNumber: spotNumber.trim() || 'Unlabeled',
+      });
+      alert('✅ Space details saved');
     } catch (error) {
-      console.error('Error saving company name:', error);
-      alert('❌ Failed to update company name');
+      console.error('Error saving space details:', error);
+      alert('❌ Failed to save space details: ' + error.message);
+    } finally {
+      setSavingSpot(false);
     }
   };
 
-  // SAVE Parker Name
-  const saveParkerName = async () => {
-    if (!selectedSpot || !selectedSpot.dbId) return;
+  // CLEAR ALL — back to an unassigned space. Keeps the space number and physical type (EV/ADA);
+  // a Reserved type is an assignment, so it returns to Regular.
+  const clearSpotDetails = async () => {
+    if (!selectedSpot?.dbId) return;
+    const label = selectedSpot.spotNumber || 'this space';
+    if (!window.confirm(`Clear all details for ${label}?\n\nThis removes the company and parker and resets a Reserved space to Regular. The space number and EV/ADA type are kept.`)) return;
+    setSavingSpot(true);
     try {
-      const parkerToSave = parkerName.trim() || null;
-      const { error } = await supabase.from('parking_spots').update({ custom_label: parkerToSave, is_custom_labeled: !!parkerToSave, updated_at: new Date().toISOString() }).eq('id', selectedSpot.dbId)
-      if (error) throw error;
-      const updatedSpots = spots.map(spot => spot.dbId === selectedSpot.dbId ? { ...spot, parkerName: parkerToSave, isCustomLabeled: !!parkerToSave } : spot);
-      setSpots(updatedSpots);
-      setSelectedSpot(prev => ({ ...prev, parkerName: parkerToSave, isCustomLabeled: !!parkerToSave }));
-      setEditingParker(false);
-      alert(parkerToSave ? `✅ Parker name saved: "${parkerToSave}"` : '✅ Parker name cleared');
+      const currentType = selectedSpot.spotType || 'regular';
+      await applySpotUpdate({
+        companyName: 'Unassigned',
+        parkerName: null,
+        spotType: currentType === 'reserved' ? 'regular' : currentType,
+        spotNumber: selectedSpot.spotNumber || 'Unlabeled',
+      });
+      alert(`✅ ${label} cleared`);
     } catch (error) {
-      console.error('Error saving parker name:', error);
-      alert('❌ Failed to update parker name');
-    }
-  };
-
-  // SAVE Spot Number
-  const saveSpotNumber = async () => {
-    if (!selectedSpot || !selectedSpot.dbId) { alert('⚠️ Please wait for the space to be saved to the database first'); return; }
-    try {
-      const spotNumToSave = spotNumber.trim() || 'Unlabeled';
-      if (spotNumToSave === selectedSpot.spotNumber) { setEditingSpotNumber(false); return; }
-      const { error } = await supabase.from('parking_spots').update({ original_label: spotNumToSave, updated_at: new Date().toISOString() }).eq('id', selectedSpot.dbId)
-      if (error) throw error;
-      const updatedSpots = spots.map(spot => spot.dbId === selectedSpot.dbId ? { ...spot, spotNumber: spotNumToSave } : spot);
-      setSpots(updatedSpots);
-      setSelectedSpot(prev => ({ ...prev, spotNumber: spotNumToSave }));
-      setEditingSpotNumber(false);
-      alert(`✅ Space number updated: "${spotNumToSave}"`);
-    } catch (error) {
-      console.error('Error saving spot number:', error);
-      alert('❌ Failed to update space number: ' + error.message);
-    }
-  };
-
-  // SAVE Spot Type
-  const saveSpotType = async () => {
-    if (!selectedSpot || !selectedSpot.dbId) { alert('⚠️ Please wait for the space to be saved to the database first'); return; }
-    try {
-      const spotTypeToSave = spotType || 'regular';
-      const spotTypeConfig = SPOT_TYPES.find(t => t.id === spotTypeToSave) || SPOT_TYPES[0];
-      const { error } = await supabase.from('parking_spots').update({ spot_type: spotTypeToSave, updated_at: new Date().toISOString() }).eq('id', selectedSpot.dbId)
-      if (error) throw error;
-      const updatedSpots = spots.map(spot => spot.dbId === selectedSpot.dbId ? { ...spot, spotType: spotTypeToSave, spotTypeConfig } : spot);
-      setSpots(updatedSpots);
-      setSelectedSpot(prev => ({ ...prev, spotType: spotTypeToSave, spotTypeConfig }));
-      setEditingSpotType(false);
-      alert(`✅ Space type updated to: "${spotTypeConfig.name}"`);
-    } catch (error) {
-      console.error('Error saving spot type:', error);
-      alert('❌ Failed to update space type: ' + error.message);
+      console.error('Error clearing space details:', error);
+      alert('❌ Failed to clear space details: ' + error.message);
+    } finally {
+      setSavingSpot(false);
     }
   };
 
@@ -740,7 +725,7 @@ export default function AdminFloorPage() {
                 <div className="flex items-center justify-between mb-4 flex-shrink-0">
                   <h3 className="font-medium text-gray-900">Edit Parking Space</h3>
                   <button
-                    onClick={() => { setSelectedSpot(null); setEditingCompany(false); setEditingParker(false); setEditingSpotNumber(false); setEditingSpotType(false); }}
+                    onClick={() => { setSelectedSpot(null); }}
                     className="text-sm text-gray-500 hover:text-gray-700"
                   >
                     ✕ Close
@@ -748,107 +733,55 @@ export default function AdminFloorPage() {
                 </div>
 
                 <div className="space-y-4 overflow-y-auto min-h-0 flex-1 pr-1">
+                    {!selectedSpot.dbId && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">⚠️ Waiting for this space to be saved to the database before it can be edited.</p>
+                    )}
+
                     {/* Company Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                      {editingCompany ? (
-                        <div className="space-y-2">
-                          <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter company name..." autoFocus />
-                          <div className="flex gap-2">
-                            <button onClick={saveCompanyName} className="flex-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm" disabled={!selectedSpot.dbId}>{selectedSpot.dbId ? '💾 Save Company' : '⚠️ Not in DB'}</button>
-                            <button onClick={() => { setEditingCompany(false); setCompanyName(selectedSpot.companyName || 'Unassigned'); }} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <div className={`text-lg font-bold ${selectedSpot.companyName !== 'Unassigned' ? 'text-blue-700' : 'text-gray-500'}`}>{selectedSpot.companyName}</div>
-                            <div className="text-xs text-gray-500 mt-1">{selectedSpot.companyName !== 'Unassigned' ? 'Occupied - Shows 🏢 icon' : 'Empty - Shows 💾 icon'}</div>
-                          </div>
-                          <button onClick={startEditingCompany} className="w-full px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm flex items-center justify-center gap-1" disabled={!selectedSpot.dbId}>
-                            <span>🏢</span><span>{selectedSpot.dbId ? 'Edit Company' : 'Wait for DB Save'}</span>
-                          </button>
-                        </div>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                      <input type="text" list="company-options" value={companyName} onChange={(e) => setCompanyName(e.target.value)} onFocus={(e) => { if (isUnassignedLabel(e.target.value)) setCompanyName(''); }} onBlur={(e) => { if (!e.target.value.trim()) setCompanyName('Unassigned'); }} disabled={!selectedSpot.dbId || savingSpot} className={`w-full px-3 py-2 border text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 ${pendingChanges.companyName ? 'border-blue-400 bg-blue-50/40' : 'border-gray-300'}`} placeholder="Unassigned" />
+                      <datalist id="company-options">
+                        {companyOptions.map(name => (<option key={name} value={name} />))}
+                      </datalist>
+                      <p className="text-xs text-gray-500 mt-1">Leave empty for an unassigned space.</p>
                     </div>
 
                     {/* Space Type */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Space Type (Border Color)</label>
-                      {editingSpotType ? (
-                        <div className="space-y-2">
-                          <select value={spotType} onChange={(e) => setSpotType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" autoFocus>
-                            {SPOT_TYPES.map(type => (<option key={type.id} value={type.id}>{type.icon} {type.name} - {type.description}</option>))}
-                          </select>
-                          <div className="flex gap-2">
-                            <button onClick={saveSpotType} className="flex-1 px-3 py-1.5 bg-green-600 text-black rounded-lg hover:bg-green-700 transition-colors text-sm" disabled={!selectedSpot.dbId}>{selectedSpot.dbId ? '🎨 Save Type' : '⚠️ Not in DB'}</button>
-                            <button onClick={() => { setEditingSpotType(false); setSpotType(selectedSpot.spotType || 'regular'); }} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="p-3 rounded-lg flex items-center gap-3 border" style={{ borderColor: selectedSpot.spotTypeConfig?.color || '#fbbf24' }}>
-                            <div className="text-xl">{selectedSpot.spotTypeConfig?.icon || '🚗'}</div>
-                            <div>
-                              <div className="font-bold text-gray-900">{selectedSpot.spotTypeConfig?.name || 'Regular'}</div>
-                              <div className="text-xs text-gray-500">{selectedSpot.companyName === 'Unassigned' ? 'Sets border color for unoccupied spaces' : 'Shows in tooltip when hovering'}</div>
-                            </div>
-                          </div>
-                          <button onClick={startEditingSpotType} className="w-full px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors text-sm flex items-center justify-center gap-1" disabled={!selectedSpot.dbId}>
-                            <span>🎨</span><span>{selectedSpot.dbId ? 'Change Space Type' : 'Wait for DB Save'}</span>
-                          </button>
-                        </div>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Space Type (Border Color)</label>
+                      <select value={spotType} onChange={(e) => setSpotType(e.target.value)} disabled={!selectedSpot.dbId || savingSpot} className={`w-full px-3 py-2 border text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 ${pendingChanges.spotType ? 'border-blue-400 bg-blue-50/40' : 'border-gray-300'}`}>
+                        {SPOT_TYPES.map(type => (<option key={type.id} value={type.id}>{type.icon} {type.name} - {type.description}</option>))}
+                      </select>
                     </div>
 
                     {/* Parker Name */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Parker Name (Hidden in UI)</label>
-                      {editingParker ? (
-                        <div className="space-y-2">
-                          <input type="text" value={parkerName} onChange={(e) => setParkerName(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter parker's full name..." autoFocus />
-                          <div className="flex gap-2">
-                            <button onClick={saveParkerName} className="flex-1 px-3 py-1.5 bg-gray-600 text-black rounded-lg hover:bg-gray-700 transition-colors text-sm" disabled={!selectedSpot.dbId}>{selectedSpot.dbId ? '👤 Save Parker' : '⚠️ Not in DB'}</button>
-                            <button onClick={() => { setEditingParker(false); setParkerName(selectedSpot.parkerName || ''); }} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">Cancel</button>
-                          </div>
-                          <p className="text-xs text-gray-500">Parker name is stored but not shown visually on the map</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className={`p-3 rounded-lg ${selectedSpot.parkerName ? 'bg-gray-100 border border-gray-300' : 'bg-gray-50'}`}>
-                            <div className={`font-bold ${selectedSpot.parkerName ? 'text-gray-700' : 'text-gray-500'}`}>{selectedSpot.parkerName || 'No parker assigned'}</div>
-                            <div className="text-xs text-gray-500 mt-1">{selectedSpot.parkerName ? 'Stored in database only (not shown on map)' : 'Optional - for internal record keeping'}</div>
-                          </div>
-                          <button onClick={startEditingParker} className="w-full px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-1" disabled={!selectedSpot.dbId}>
-                            <span>👤</span><span>{selectedSpot.dbId ? (selectedSpot.parkerName ? 'Edit Parker' : 'Add Parker') : 'Wait for DB Save'}</span>
-                          </button>
-                        </div>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Parker Name (Hidden in UI)</label>
+                      <input type="text" value={parkerName} onChange={(e) => setParkerName(e.target.value)} disabled={!selectedSpot.dbId || savingSpot} className={`w-full px-3 py-2 border text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 ${pendingChanges.parkerName ? 'border-blue-400 bg-blue-50/40' : 'border-gray-300'}`} placeholder="No parker assigned" />
+                      <p className="text-xs text-gray-500 mt-1">Stored in the database only (not shown on the map).</p>
                     </div>
 
                     {/* Space Number */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Space Number</label>
-                      {editingSpotNumber ? (
-                        <div className="space-y-2">
-                          <input type="text" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} className="w-full px-3 py-2 border border-gray-300 text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Enter space number (e.g., A1, B2)..." autoFocus />
-                          <div className="flex gap-2">
-                            <button onClick={saveSpotNumber} className="flex-1 px-3 py-1.5 bg-gray-700 text-black rounded-lg hover:bg-gray-800 transition-colors text-sm">🔢 Save Number</button>
-                            <button onClick={() => { setEditingSpotNumber(false); setSpotNumber(selectedSpot.spotNumber || ''); }} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">Cancel</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="p-3 bg-gray-50 rounded-lg">
-                            <div className="text-xl font-bold text-gray-900">{selectedSpot.spotNumber || 'Unlabeled'}</div>
-                            <div className="text-xs text-gray-500 mt-1">Shows on hover</div>
-                          </div>
-                          <button onClick={startEditingSpotNumber} className="w-full px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm flex items-center justify-center gap-1">
-                            <span>🔢</span><span>Edit Space Number</span>
-                          </button>
-                        </div>
-                      )}
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Space Number</label>
+                      <input type="text" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} disabled={!selectedSpot.dbId || savingSpot} className={`w-full px-3 py-2 border text-black rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 ${pendingChanges.spotNumber ? 'border-blue-400 bg-blue-50/40' : 'border-gray-300'}`} placeholder="Unlabeled" />
                     </div>
+                </div>
+
+                {/* Actions */}
+                <div className="pt-4 mt-4 border-t border-gray-200 space-y-2 flex-shrink-0">
+                  <div className="flex gap-2">
+                    <button onClick={saveSpotChanges} disabled={!selectedSpot.dbId || !hasPendingChanges || savingSpot} className="flex-1 px-3 py-2 vend-btn-primary rounded-lg text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed">
+                      {savingSpot ? 'Saving…' : hasPendingChanges ? 'Save changes' : 'No changes'}
+                    </button>
+                    <button onClick={() => resetFormToSpot(selectedSpot)} disabled={!hasPendingChanges || savingSpot} className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+                      Discard
+                    </button>
+                  </div>
+                  <button onClick={clearSpotDetails} disabled={!selectedSpot.dbId || savingSpot} className="w-full px-3 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition-colors text-sm disabled:opacity-40 disabled:cursor-not-allowed">
+                    Clear All (reset to unassigned)
+                  </button>
                 </div>
               </div>
             ) : null}
