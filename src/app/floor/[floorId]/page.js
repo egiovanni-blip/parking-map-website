@@ -242,17 +242,19 @@ function FloorMapView() {
     coloredShapes.forEach((shape, shapeIndex) => {
       try {
         const shapeBBox = shape.bbox
+        // Compare on-screen rects so labels with their own transform (e.g. P18) still line up.
+        const shapeRect = shape.element.getBoundingClientRect()
         const matchingTexts = []
         allTextElements.forEach((textElement) => {
           try {
-            const textBBox = textElement.getBBox()
+            const textBBox = textElement.getBoundingClientRect()
             const textContent = textElement.textContent?.trim()
             if (!textContent || textContent.length > 10) return
             const textCenterX = textBBox.x + textBBox.width / 2
             const textCenterY = textBBox.y + textBBox.height / 2
-            const isInside = textCenterX >= shapeBBox.x && textCenterX <= shapeBBox.x + shapeBBox.width && textCenterY >= shapeBBox.y && textCenterY <= shapeBBox.y + shapeBBox.height
-            const distance = Math.sqrt(Math.pow(textCenterX - (shapeBBox.x + shapeBBox.width / 2), 2) + Math.pow(textCenterY - (shapeBBox.y + shapeBBox.height / 2), 2))
-            const maxDistance = Math.max(shapeBBox.width, shapeBBox.height) / 2
+            const isInside = textCenterX >= shapeRect.x && textCenterX <= shapeRect.x + shapeRect.width && textCenterY >= shapeRect.y && textCenterY <= shapeRect.y + shapeRect.height
+            const distance = Math.sqrt(Math.pow(textCenterX - (shapeRect.x + shapeRect.width / 2), 2) + Math.pow(textCenterY - (shapeRect.y + shapeRect.height / 2), 2))
+            const maxDistance = Math.max(shapeRect.width, shapeRect.height) / 2
             if (isInside || distance < maxDistance) matchingTexts.push({ element: textElement, content: textContent, bbox: textBBox, distance, isInside })
           } catch (err) {}
         })
@@ -261,7 +263,7 @@ function FloorMapView() {
         let cleanText = null
         if (spotText) {
           cleanText = spotText.replace(/\s+/g, ' ').trim()
-          const spotNumberMatch = cleanText.match(/([A-Z]?\d+[A-Z]?|\b[A-Z]\d*\b)/i)
+          const spotNumberMatch = cleanText.match(/([A-Z]?\d+(?:-\d+)*[A-Z]?|\b[A-Z]\d*\b)/i)
           if (spotNumberMatch) cleanText = spotNumberMatch[1]
         }
         spotsFound.push({

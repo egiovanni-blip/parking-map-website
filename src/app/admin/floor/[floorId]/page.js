@@ -109,7 +109,15 @@ export default function AdminFloorPage() {
     
     const spots = [];
     const allElements = svgElement.querySelectorAll('*');
-    
+
+    // Space numbers (e.g. "3-146") are <text> elements drawn inside each yellow box.
+    const textLabels = Array.from(svgElement.querySelectorAll('text'))
+      .map(textEl => {
+        const rect = textEl.getBoundingClientRect();
+        return { text: textEl.textContent.trim(), cx: rect.x + rect.width / 2, cy: rect.y + rect.height / 2 };
+      })
+      .filter(label => label.text);
+
     allElements.forEach((element, index) => {
       if (element.tagName.toLowerCase() !== 'rect' && 
           element.tagName.toLowerCase() !== 'polygon' && 
@@ -158,6 +166,13 @@ export default function AdminFloorPage() {
         const screenWidth = Math.max(...screenPoints.map(p => p.x)) - screenX;
         const screenHeight = Math.max(...screenPoints.map(p => p.y)) - screenY;
         
+        const boxRect = element.getBoundingClientRect();
+        const labelsInside = textLabels.filter(label =>
+          label.cx >= boxRect.left && label.cx <= boxRect.right &&
+          label.cy >= boxRect.top && label.cy <= boxRect.bottom
+        );
+        const svgSpotNumber = labelsInside.length === 1 ? labelsInside[0].text : null;
+
         const spot = {
           id: `detected_${floorId}_${index}_${Date.now()}`,
           svgX: bbox.x,
@@ -173,9 +188,9 @@ export default function AdminFloorPage() {
           elementType: element.tagName.toLowerCase(),
           companyName: 'Unassigned',
           parkerName: null,
-          spotNumber: `SPOT-${index + 1}`,
-          originalSpotNumber: null,
-          hasText: false,
+          spotNumber: svgSpotNumber || `SPOT-${index + 1}`,
+          originalSpotNumber: svgSpotNumber,
+          hasText: !!svgSpotNumber,
           rawElement: element,
           shapeIndex: index,
           isCustomLabeled: false,
@@ -541,7 +556,7 @@ export default function AdminFloorPage() {
       detectedSpots.forEach(detectedSpot => {
         const key = `${Math.round(detectedSpot.svgX)}_${Math.round(detectedSpot.svgY)}`;
         if (!existingSpotMap.has(key)) {
-          spotsToSave.push({ floor_id: floorId, spot_identifier: `spot_${detectedSpot.svgX}_${detectedSpot.svgY}`, display_label: 'Unassigned', custom_label: null, original_label: 'Unlabeled', color: detectedSpot.color, spot_type: 'regular', svg_x: detectedSpot.svgX, svg_y: detectedSpot.svgY, svg_width: detectedSpot.svgWidth, svg_height: detectedSpot.svgHeight, is_custom_labeled: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+          spotsToSave.push({ floor_id: floorId, spot_identifier: `spot_${detectedSpot.svgX}_${detectedSpot.svgY}`, display_label: 'Unassigned', custom_label: null, original_label: detectedSpot.originalSpotNumber || 'Unlabeled', color: detectedSpot.color, spot_type: 'regular', svg_x: detectedSpot.svgX, svg_y: detectedSpot.svgY, svg_width: detectedSpot.svgWidth, svg_height: detectedSpot.svgHeight, is_custom_labeled: false, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
         }
       });
       if (spotsToSave.length > 0) {

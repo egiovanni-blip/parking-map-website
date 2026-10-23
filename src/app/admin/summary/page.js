@@ -264,9 +264,16 @@ export default function AllocationSummaryPage() {
 
         const key = tenant.toLowerCase()
         if (!byTenant[key]) {
-          byTenant[key] = { tenant, available: 0, elected: 0, electedSpots: [] }
+          byTenant[key] = { tenant, available: 0, elected: 0, electedSpots: [], allocatedSpots: [] }
         }
         byTenant[key].available += 1
+        byTenant[key].allocatedSpots.push({
+          spotNumber,
+          spaceCode,
+          parkerName,
+          phone,
+          spotType: spot.spot_type || 'regular',
+        })
         if (spot.spot_type === 'reserved') {
           byTenant[key].elected += 1
           byTenant[key].electedSpots.push({
@@ -284,6 +291,7 @@ export default function AllocationSummaryPage() {
         .map(row => ({
           ...row,
           electedSpots: row.electedSpots.sort((a, b) => compareSpotNumbers(a.spotNumber, b.spotNumber)),
+          allocatedSpots: row.allocatedSpots.sort((a, b) => compareSpotNumbers(a.spaceCode, b.spaceCode)),
         }))
         .sort((a, b) => a.tenant.localeCompare(b.tenant, undefined, { sensitivity: 'base' }))
 
@@ -485,19 +493,19 @@ export default function AllocationSummaryPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              if (row.elected === 0) return
+                              if (row.available === 0) return
                               setExpandedTenant(isExpanded ? null : row.tenant)
                             }}
                             className={`flex items-center gap-2 text-left w-full group ${
-                              row.elected > 0 ? 'cursor-pointer' : 'cursor-default'
+                              row.available > 0 ? 'cursor-pointer' : 'cursor-default'
                             }`}
                             aria-expanded={isExpanded}
-                            disabled={row.elected === 0}
+                            disabled={row.available === 0}
                           >
                             <span className="text-gray-400 text-xs w-4 flex-shrink-0">
-                              {row.elected > 0 ? (isExpanded ? '▼' : '▶') : ''}
+                              {row.available > 0 ? (isExpanded ? '▼' : '▶') : ''}
                             </span>
-                            <span className={row.elected > 0 ? 'group-hover:text-blue-700 group-hover:underline' : ''}>
+                            <span className={row.available > 0 ? 'group-hover:text-blue-700 group-hover:underline' : ''}>
                               {row.tenant}
                             </span>
                           </button>
@@ -505,7 +513,7 @@ export default function AllocationSummaryPage() {
                         <td className="px-5 py-3 text-gray-700 text-right tabular-nums">{row.available}</td>
                         <td className="px-5 py-3 text-gray-700 text-right tabular-nums">{row.elected}</td>
                       </tr>
-                      {isExpanded && row.electedSpots.length > 0 && (
+                      {isExpanded && row.allocatedSpots.length > 0 && (
                         <tr key={`${row.tenant}-details`} className="border-b border-gray-100 bg-gray-50">
                           <td colSpan={3} className="px-5 py-3">
                             <div className="ml-6 rounded-lg border border-gray-200 bg-white overflow-hidden">
@@ -513,15 +521,19 @@ export default function AllocationSummaryPage() {
                                 <thead>
                                   <tr className="border-b border-gray-200 bg-gray-50 text-left">
                                     <th className="px-3 py-2 font-semibold text-gray-700">Space #</th>
+                                    <th className="px-3 py-2 font-semibold text-gray-700">Status</th>
                                     <th className="px-3 py-2 font-semibold text-gray-700">Parker</th>
                                     <th className="px-3 py-2 font-semibold text-gray-700">Phone</th>
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {row.electedSpots.map((spot, idx) => (
+                                  {row.allocatedSpots.map((spot, idx) => (
                                     <tr key={`${spot.spotNumber}-${idx}`} className="border-b border-gray-100 last:border-0">
                                       <td className="px-3 py-2 font-medium text-gray-900 tabular-nums">
                                         {spot.spaceCode || spot.spotNumber}
+                                      </td>
+                                      <td className={`px-3 py-2 ${spot.spotType === 'reserved' ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
+                                        {spot.spotType === 'reserved' ? 'Reserved' : 'Available'}
                                       </td>
                                       <td className="px-3 py-2 text-gray-600">
                                         {spot.parkerName || '—'}
