@@ -33,7 +33,7 @@ function TenantLoginForm() {
       const data = await res.json()
       if (!res.ok) {
         if (data.code === 'PASSWORD_NOT_SET') {
-          return setError('No password set yet. Use "Set your password" below to get a verification code.')
+          return setError('No password set yet. Use "Forgot password?" above to get a verification code.')
         }
         return setError(data.error || 'Something went wrong.')
       }
@@ -110,12 +110,6 @@ function TenantLoginForm() {
       </button>
 
       <div className="mt-4 text-center space-y-2">
-        <p className="text-xs text-vend-slate">
-          First time?{' '}
-          <Link href="/tenant/set-password" className="text-vend-black font-semibold hover:underline underline-offset-2">
-            Set your password
-          </Link>
-        </p>
         <p className="text-xs text-vend-slate/80">
           Contact your property manager if you need access.
         </p>
