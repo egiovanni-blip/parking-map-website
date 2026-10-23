@@ -1,19 +1,20 @@
-import { Space_Grotesk, Manrope } from 'next/font/google'
+import localFont from 'next/font/local'
 import Header from '../components/Header/Header'
 import Footer from '../components/Footer/Footer'
 import { AuthProvider } from '@/contexts/AuthContext'
 import './globals.css'
 
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['700'],
+// Self-hosted (latin subset) so builds don't depend on fetching from Google Fonts.
+const spaceGrotesk = localFont({
+  src: './fonts/SpaceGrotesk-latin-700.woff2',
+  weight: '700',
   variable: '--font-space-grotesk',
   display: 'swap',
 })
 
-const manrope = Manrope({
-  subsets: ['latin'],
-  weight: ['400', '600', '800'],
+const manrope = localFont({
+  src: './fonts/Manrope-latin-variable.woff2',
+  weight: '400 800',
   variable: '--font-manrope',
   display: 'swap',
 })
