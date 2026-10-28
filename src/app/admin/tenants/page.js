@@ -212,6 +212,11 @@ export default function TenantContactsPage() {
     if (!form.email) return setError('Please enter an email.')
     if (!fullName) return setError('Please enter a full name.')
     if (!resolvedCompany) return setError('Please select or enter a company name.')
+    if (initialPassword || confirmPassword) {
+      if (!initialPassword) return setError('Please enter the new password.')
+      if (initialPassword.length < 8) return setError('Password must be at least 8 characters.')
+      if (initialPassword !== confirmPassword) return setError('Passwords do not match.')
+    }
     setSaving(true)
     setError('')
 
@@ -226,13 +231,45 @@ export default function TenantContactsPage() {
 
     if (error) {
       setError(error.message.includes('unique') ? 'This email is already registered.' : error.message)
-    } else {
-      setSuccess('Contact updated successfully.')
-      resetForm()
-      loadContacts()
-      loadCompanyOptions()
-      setTimeout(() => setSuccess(''), 3000)
+      setSaving(false)
+      return
     }
+
+    // Optional password change goes through the server so it can be hashed.
+    if (initialPassword) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const headers = { 'Content-Type': 'application/json' }
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`
+        }
+        const res = await fetch('/api/admin/tenant-contacts', {
+          method: 'PATCH',
+          credentials: 'same-origin',
+          headers,
+          body: JSON.stringify({ id: editingId, password: initialPassword }),
+        })
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          setError(`Contact details saved, but the password was not set: ${body.error || 'unknown error'}`)
+          loadContacts()
+          setSaving(false)
+          return
+        }
+      } catch (err) {
+        console.error('Set tenant password error:', err)
+        setError('Contact details saved, but the password was not set. Please try again.')
+        loadContacts()
+        setSaving(false)
+        return
+      }
+    }
+
+    setSuccess(initialPassword ? 'Contact updated and password set.' : 'Contact updated successfully.')
+    resetForm()
+    loadContacts()
+    loadCompanyOptions()
+    setTimeout(() => setSuccess(''), 3000)
     setSaving(false)
   }
 
@@ -314,11 +351,11 @@ export default function TenantContactsPage() {
             )}
           </div>
         </div>
-        {!isEditing && (
+        {(
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Initial password <span className="text-gray-400 font-normal">(optional)</span>
+                {isEditing ? 'New password' : 'Initial password'} <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               <div className="relative">
                 <input
@@ -349,7 +386,9 @@ export default function TenantContactsPage() {
               />
             </div>
             <p className="md:col-span-2 text-xs text-gray-500 -mt-2">
-              Leave blank if the tenant will set their own password via the tenant login page.
+              {isEditing
+                ? 'Leave blank to keep the current password. Setting one replaces it and cancels any pending reset code.'
+                : 'Leave blank if the tenant will set their own password via the tenant login page.'}
             </p>
           </div>
         )}
@@ -394,6 +433,7 @@ export default function TenantContactsPage() {
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Full Name</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Email</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Company</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-700">Password</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Status</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-700">Added</th>
                 <th className="px-4 py-3"></th>
@@ -410,6 +450,11 @@ export default function TenantContactsPage() {
                   <td className="px-4 py-3 text-gray-900">{contact.full_name || '—'}</td>
                   <td className="px-4 py-3 text-gray-900">{contact.email}</td>
                   <td className="px-4 py-3 text-gray-700">{contact.company_name}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {contact.password_hash
+                      ? <span className="text-green-700">Set</span>
+                      : <span className="text-gray-400">Not set</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => handleToggle(contact)}

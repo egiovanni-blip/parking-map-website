@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import bcrypt from 'bcryptjs'
-import { getSupabaseAdmin } from '@/lib/admin-auth'
+import { getSupabaseAdmin, isSuperAdminEmail } from '@/lib/admin-auth'
 
 async function getAuthenticatedUser(request) {
   const supabaseAdmin = getSupabaseAdmin()
@@ -81,6 +81,55 @@ export async function POST(request) {
     })
   } catch (err) {
     console.error('Create tenant contact error:', err.message)
+    return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
+  }
+}
+
+// Set (or replace) an existing tenant contact's password. Active admins only.
+export async function PATCH(request) {
+  const user = await getAuthenticatedUser(request)
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const supabaseAdmin = getSupabaseAdmin()
+
+  if (!isSuperAdminEmail(user.email)) {
+    const { data: adminRow } = await supabaseAdmin
+      .from('admin_users')
+      .select('id')
+      .eq('id', user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (!adminRow) {
+      return NextResponse.json({ error: 'Unauthorized — not an admin.' }, { status: 403 })
+    }
+  }
+
+  try {
+    const body = await request.json()
+    const id = body.id
+    const password = body.password?.trim() || ''
+
+    if (!id) return NextResponse.json({ error: 'Contact id is required.' }, { status: 400 })
+    if (password.length < 8) {
+      return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 })
+    }
+
+    const password_hash = await bcrypt.hash(password, 12)
+    const { data, error } = await supabaseAdmin
+      .from('tenant_contacts')
+      .update({ password_hash, otp_hash: null, otp_expires_at: null })
+      .eq('id', id)
+      .select('id, email')
+      .maybeSingle()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    if (!data) return NextResponse.json({ error: 'Contact not found.' }, { status: 404 })
+
+    return NextResponse.json({ success: true, contact: data })
+  } catch (err) {
+    console.error('Set tenant password error:', err.message)
     return NextResponse.json({ error: 'Something went wrong.' }, { status: 500 })
   }
 }
