@@ -93,6 +93,9 @@ export async function POST(request) {
       .from('admin_users')
       .insert([{ id: created.user.id, email: email.toLowerCase().trim(), is_active: true }])
 
+    // Their login now exists, so any pending invite / reset code is no longer needed
+    await supabaseAdmin.from('admin_invites').delete().eq('email', email.toLowerCase().trim())
+
     return NextResponse.json({ success: true, created: true })
   }
 
@@ -143,6 +146,8 @@ export async function POST(request) {
       }
     }
   }
+
+  await supabaseAdmin.from('admin_invites').delete().eq('email', email.toLowerCase().trim())
 
   return NextResponse.json({ success: true, created: false })
 }
